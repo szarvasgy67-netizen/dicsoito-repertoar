@@ -235,6 +235,7 @@ with tab2:
             placeholder="pl. Átkötés, ima...",
             label_visibility="collapsed",
         )
+
       with c3:
         if idx > 0 and st.button("⬆️", key=f"up_{item.get('id', idx)}"):
           curr = st.session_state.setlist.pop(idx)
