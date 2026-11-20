@@ -64,11 +64,12 @@ songs = load_songs()
 if "setlist" not in st.session_state:
   st.session_state.setlist = list()
 
-st.sidebar.header("🔍 Dal keresése és szűrése")
 search_query = st.sidebar.text_input(
     "Keresés címre, előadóra vagy dalszövegre:",
     placeholder="pl. Óceánok, Hillsong, kegyelem...",
+    key="main_search_box",
 )
+
 
 all_artists = sorted(list({song.get("artist", "") for song in songs}))
 selected_artists = st.sidebar.multiselect("Előadó:", options=all_artists)
