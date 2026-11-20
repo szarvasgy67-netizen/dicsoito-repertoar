@@ -260,7 +260,7 @@ with tab2:
     export_lines = ["KONCERTANYAG / DICSŐÍTŐ SETLIST\n" + "=" * 35 + "\n"]
 
     for idx, item in enumerate(st.session_state.setlist):
-      c1, c2, c3, c4 = st.columns()
+      c1, c2, c3, c4 = st.columns([3, 3, 1, 1])
       with c1:
         st.markdown(
             f"**{idx + 1}. {item['title']}** ({item['artist']}) –"
