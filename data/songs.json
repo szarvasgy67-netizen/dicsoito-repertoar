@@ -1,0 +1,54 @@
+[
+  {
+    "id": 1,
+    "title": "Óceánok (Oceans)",
+    "artist": "Hillsong United",
+    "origin": "Amerikai / Nemzetközi",
+    "key": "D-dúr (Hm)",
+    "bpm": 66,
+    "themes": ["hit", "bizalom", "megtérés", "kegyelem"],
+    "youtube_url": "https://youtube.com",
+    "spotify_url": "https://spotify.com",
+    "sheet_music_url": "https://worshiptogether.com",
+    "lyrics": "Hívsz engem a vizek fölé,\nAhol lábam megcsúszhat...\n\nRefrén:\nSzent Szellem, Te vezess engem,\nHogy hitem mélyebb legyen..."
+  },
+  {
+    "id": 2,
+    "title": "Áldjad lelkem az Urat (10,000 Reasons)",
+    "artist": "Matt Redman",
+    "origin": "Amerikai / Nemzetközi",
+    "key": "G-dúr",
+    "bpm": 73,
+    "themes": ["hálaadás", "dicsőítés", "szeretet"],
+    "youtube_url": "https://youtube.com",
+    "spotify_url": "https://spotify.com",
+    "sheet_music_url": "https://worshiptogether.com",
+    "lyrics": "Áldjad lelkem az Urat,\nÁldd Őt, szent nevét dicsérd!\nÉnekelj úgy, mint még soha,\nÁldd az Ő szent nevét!"
+  },
+  {
+    "id": 3,
+    "title": "Jézus, Te vagy minden álmom",
+    "artist": "Pintér Béla",
+    "origin": "Magyar",
+    "key": "C-dúr",
+    "bpm": 70,
+    "themes": ["békesség", "szeretet", "odaadás"],
+    "youtube_url": "https://youtube.com",
+    "spotify_url": "https://spotify.com",
+    "sheet_music_url": "https://pinterbela.hu",
+    "lyrics": "Jézus, Te vagy minden álmom,\nÉjszakám és nappalom.\nTe vagy a fény az életemben,\nCsak Rád vágyom, Jézusom."
+  },
+  {
+    "id": 4,
+    "title": "Szabadító (O Come to the Altar)",
+    "artist": "Elevation Worship / Gateway",
+    "origin": "Amerikai / Nemzetközi",
+    "key": "B-dúr (H-dúr)",
+    "bpm": 70,
+    "themes": ["megtérés", "kegyelem", "békesség"],
+    "youtube_url": "https://youtube.com",
+    "spotify_url": "https://spotify.com",
+    "sheet_music_url": "https://worshiptogether.com",
+    "lyrics": "Fáj a lelked és megfáradtál?\nNincs már benned erő?\nJézus hív most téged..."
+  }
+]
