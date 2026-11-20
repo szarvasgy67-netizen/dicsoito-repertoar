@@ -2,6 +2,8 @@ from collections import Counter
 import json
 import unicodedata
 import urllib.parse
+from bs4 import BeautifulSoup
+import requests
 import streamlit as st
 
 st.set_page_config(
@@ -48,15 +50,13 @@ def build_google_search_url(query_text):
   return "https:" + s + s + "://google.com" + s + "search" + q_mark + q
 
 
-
 songs = load_songs()
 if "setlist" not in st.session_state:
   st.session_state.setlist = list()
 
 st.sidebar.header("🔍 Dal keresése és szűrése")
 search_query = st.sidebar.text_input(
-    "Keresés címre, előadóra vagy szövegre:",
-    placeholder="pl. Óceánok, Hillsong, kegyelem...",
+    "Keresés címre vagy dalszövegre:", placeholder="pl. Óceánok, kegyelem..."
 )
 
 all_artists = sorted(list({song.get("artist", "") for song in songs}))
@@ -112,7 +112,6 @@ tab1, tab2, tab3 = st.tabs((
     f"📋 Koncertanyag / Setlist ({len(st.session_state.setlist)})",
     "📊 Amerikai Rádiós Toplisták (Air1 & K-LOVE)",
 ))
-
 with tab1:
   if not filtered_songs:
     st.warning("Nincs találat a szűrésre.")
@@ -156,13 +155,12 @@ with tab1:
       with st.container(border=True):
         search_str = f"{song.get('title', '')} {song.get('artist', '')}"
         yt_search_url = build_yt_search_url(search_str)
-        raw_yt = song.get("youtube_url", "").strip()
-        is_valid_video = "watch?v=" in raw_yt or "youtu.be/" in raw_yt
+        yt_url = song.get("youtube_url", "").strip()
 
-        if is_valid_video:
-          st.video(raw_yt)
+        if "watch" + q_mark + "v" + eq in yt_url or "youtu.be" + s in yt_url:
+          st.video(yt_url)
           st.link_button(
-              "▶️ Megnyitás YouTube-on", raw_yt, use_container_width=True
+              "▶️ Megnyitás YouTube-on", yt_url, use_container_width=True
           )
           st.link_button(
               "🔍 További verziók a YouTube-on",
@@ -176,10 +174,10 @@ with tab1:
               use_container_width=True,
           )
 
-        raw_sheet = song.get("sheet_music_url", "").strip()
-        if raw_sheet.startswith("http"):
+        sheet_url = song.get("sheet_music_url", "").strip()
+        if sheet_url:
           st.link_button(
-              "🎼 Kotta megnyitása", raw_sheet, use_container_width=True
+              "🎼 Kotta megnyitása", sheet_url, use_container_width=True
           )
         else:
           st.link_button(
@@ -201,6 +199,7 @@ with tab1:
       ):
         st.session_state.setlist.append(song)
         st.rerun()
+
 with tab2:
   st.subheader("Összeállított dallista")
   if not st.session_state.setlist:
@@ -231,11 +230,8 @@ with tab2:
           st.session_state.setlist.pop(idx)
           st.rerun()
       note_text = f" | Megjegyzés: {note}" if note else ""
-      raw_item_yt = item.get("youtube_url", "").strip()
-      yt_link = (
-          raw_item_yt
-          if ("watch?v=" in raw_item_yt or "youtu.be/" in raw_item_yt)
-          else build_yt_search_url(f"{item.get('title', '')} {item.get('artist', '')}")
+      yt_link = item.get("youtube_url") or build_yt_search_url(
+          f"{item.get('title', '')} {item.get('artist', '')}"
       )
       export_lines.append(
           f"{idx + 1}. {item.get('title', '')} - {item.get('artist', '')} ({item.get('key', '')},"
