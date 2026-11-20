@@ -34,6 +34,7 @@ def normalize_match(text):
   nfkd = unicodedata.normalize("NFKD", str(text).lower())
   return "".join([c for c in nfkd if c.isalnum() or c == " "]).strip()
 
+
 s = chr(47)
 q_mark = chr(63)
 eq = chr(61)
@@ -41,80 +42,27 @@ eq = chr(61)
 
 def build_yt_search_url(query_text):
   q = urllib.parse.urlencode({"search_query": clean_query(query_text)})
-  return (
-      "https:" + s + s + "www.youtube.com" + s + "results" + q_mark + q
-  )
+  return "https:" + s + s + "://youtube.com" + s + "results" + q_mark + q
 
 
 def build_google_search_url(query_text):
   q = urllib.parse.urlencode({"q": clean_query(query_text)})
-  return "https:" + s + s + "www.google.com" + s + "search" + q_mark + q
+  return "https:" + s + s + "://google.com" + s + "search" + q_mark + q
 
-@st.cache_data(ttl=3600)
-def fetch_us_christian_radio_data():
-  headers = {"User-Agent": "Mozilla/5.0"}
-  results = {"air1": [], "klove": [], "itunes": []}
-  for key, slug in [("air1", "air1"), ("klove", "klove")]:
-    try:
-      u = (
-          "https:"
-          + s
-          + s
-          + "onlineradiobox.com"
-          + s
-          + "us"
-          + s
-          + slug
-          + s
-          + "playlist"
-          + s
-      )
-      r = requests.get(u, headers=headers, timeout=8)
-      if r.status_code == 200:
-        soup = BeautifulSoup(r.text, "html.parser")
-        for row in soup.select("table.tablelist-schedule tr"):
-          cols = [c.get_text(" ", strip=True) for c in row.find_all("td")]
-          if len(cols) >= 2 and " - " in cols[1]:
-            results[key].append(cols[1])
-    except Exception:
-      pass
-  try:
-    u_it = (
-        "https:"
-        + s
-        + s
-        + "://apple.com"
-        + s
-        + "us"
-        + s
-        + "rss"
-        + s
-        + "topsongs"
-        + s
-        + "limit=50"
-        + s
-        + "genre=22"
-        + s
-        + "json"
-    )
-    r = requests.get(u_it, headers=headers, timeout=8)
-    if r.status_code == 200:
-      for entry in r.json().get("feed", {}).get("entry", []):
-        t = entry.get("im:name", {}).get("label", "")
-        a = entry.get("im:artist", {}).get("label", "")
-        if t and a:
-          results["itunes"].append(f"{a} - {t}")
-  except Exception:
-    pass
-  return results
+
 songs = load_songs()
 if "setlist" not in st.session_state:
   st.session_state.setlist = []
 
 st.sidebar.header("🔍 Dal keresése és szűrése")
 search_query = st.sidebar.text_input(
-    "Keresés címre vagy dalszövegre:", placeholder="pl. Óceánok, kegyelem..."
+    "Keresés címre, előadóra vagy szövegre:",
+    placeholder="pl. Óceánok, Hillsong, kegyelem...",
 )
+
+all_artists = sorted(list({song["artist"] for song in songs}))
+selected_artists = st.sidebar.multiselect("Előadó:", options=all_artists)
+
 all_themes = sorted(list({theme for song in songs for theme in song["themes"]}))
 selected_themes = st.sidebar.multiselect("Tematika:", options=all_themes)
 all_origins = sorted(list({song["origin"] for song in songs}))
@@ -132,6 +80,8 @@ for song in songs:
         and q not in song["lyrics"].lower()
     ):
       continue
+  if selected_artists and song["artist"] not in selected_artists:
+    continue
   if selected_themes and not all(t in song["themes"] for t in selected_themes):
     continue
   if selected_origin and song["origin"] not in selected_origin:
@@ -141,7 +91,13 @@ for song in songs:
   filtered_songs.append(song)
 
 st.title("🎸 Dicsőítő Repertoár & Setlist Tervező")
-if search_query or selected_themes or selected_origin or selected_key:
+if (
+    search_query
+    or selected_artists
+    or selected_themes
+    or selected_origin
+    or selected_key
+):
   st.success(
       f"🎯 Szűrés aktív: {len(filtered_songs)} dal felel meg a feltételeknek!"
   )
@@ -153,6 +109,7 @@ tab1, tab2, tab3 = st.tabs([
     f"📋 Koncertanyag / Setlist ({len(st.session_state.setlist)})",
     "📊 Amerikai Rádiós Toplisták (Air1 & K-LOVE)",
 ])
+
 
 with tab1:
   if not filtered_songs:
