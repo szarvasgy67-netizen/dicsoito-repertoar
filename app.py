@@ -297,7 +297,7 @@ with tab2:
     st.divider()
 
     final_text = "\n".join(export_lines)
-    col_exp1, col_exp2 = st.columns()
+    col_exp1, col_exp2 = st.columns(2)
     with col_exp1:
       st.download_button(
           label="📥 Koncertanyag letöltése (.txt) a zenekarnak",
@@ -415,7 +415,7 @@ with tab3:
       " európai tiltás nélkül!"
   )
 
-  col_btn1, col_btn2 = st.columns()
+  col_btn1, col_btn2 = st.columns(2)
   with col_btn1:
     if st.button("🔄 Adatok frissítése most", use_container_width=True):
       st.cache_data.clear()
