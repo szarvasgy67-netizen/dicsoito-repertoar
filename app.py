@@ -1,51 +1,11 @@
 import json
-import math
-import urllib.parse
+import unicodedata
 import streamlit as st
 
 st.set_page_config(
-    page_title="Dicsőítő Repertoár", page_icon="🎸", layout="wide"
-)
-
-# Görgetősáv kényszerítése + natív HTML gombok stílusa
-st.markdown(
-    """
-    <style>
-        html, body, [data-testid="stAppViewContainer"], .main {
-            overflow-y: auto !important;
-            height: auto !important;
-        }
-        .ext-btn {
-            display: block;
-            width: 100%;
-            padding: 0.55rem 1rem;
-            margin-bottom: 0.5rem;
-            border-radius: 0.5rem;
-            text-align: center;
-            text-decoration: none !important;
-            font-weight: 600;
-            font-size: 0.95rem;
-            transition: opacity 0.2s;
-        }
-        .ext-btn:hover {
-            opacity: 0.85;
-        }
-        .yt-btn {
-            background-color: #FF0000;
-            color: #FFFFFF !important;
-        }
-        .sheet-btn {
-            background-color: #262730;
-            color: #FFFFFF !important;
-            border: 1px solid #4A4C5A;
-        }
-        .radio-btn {
-            background-color: #1E3A8A;
-            color: #FFFFFF !important;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True,
+    page_title="Dicsőítő Repertoár & Setlist Tervező",
+    page_icon="🎸",
+    layout="wide",
 )
 
 
@@ -63,31 +23,36 @@ def load_songs():
     st.stop()
 
 
-def build_clean_query(title, artist):
-  raw = f"{title} {artist}"
-  for ch in ["/", "(", ")", ".", ",", "&"]:
-    raw = raw.replace(ch, " ")
-  return " ".join(raw.split())
+def clean_query(text):
+  nfkd = unicodedata.normalize("NFKD", str(text))
+  ascii_text = "".join([c for c in nfkd if c.isalnum() or c == " "])
+  return "+".join(ascii_text.split())
 
 
-def make_yt_search_url(query_text):
-  base = "https://" + "://youtube.com" + "/results"
-  params = urllib.parse.urlencode({"search_query": query_text})
-  return f"{base}?{params}"
+s = chr(47)
+q_mark = chr(63)
+eq = chr(61)
 
 
-def make_google_search_url(query_text):
-  base = "https://" + "://google.com" + "/search"
-  params = urllib.parse.urlencode({"q": query_text})
-  return f"{base}?{params}"
-
-
-def render_link_button(label, url, css_class="sheet-btn"):
-  st.markdown(
-      f'<a href="{url}" target="_top" rel="noopener noreferrer" class="ext-btn'
-      f' {css_class}">{label}</a>',
-      unsafe_allow_html=True,
+def build_yt_search_url(query_text):
+  q = clean_query(query_text)
+  return (
+      "https:"
+      + s
+      + s
+      + "www.youtube.com"
+      + s
+      + "results"
+      + q_mark
+      + "search_query"
+      + eq
+      + q
   )
+
+
+def build_google_search_url(query_text):
+  q = clean_query(query_text)
+  return "https:" + s + s + "://google.com" + s + "search" + q_mark + "q" + eq + q
 
 
 songs = load_songs()
@@ -117,11 +82,15 @@ selected_key = st.sidebar.multiselect("Hangnem:", options=all_keys)
 st.sidebar.divider()
 st.sidebar.subheader("📻 Élő Dicsőítő Rádiók (USA)")
 st.sidebar.caption("Ingyenes 0-24 online stream inspirációhoz:")
-render_link_button(
-    "🎵 Air1 Worship Now", "https://" + "://air1.com", "radio-btn"
+st.sidebar.link_button(
+    "🎵 Air1 Worship Now",
+    "https:" + s + s + "://air1.com" + s + "listen",
+    use_container_width=True,
 )
-render_link_button(
-    "❤️ K-LOVE Radio", "https://" + "://klove.com", "radio-btn"
+st.sidebar.link_button(
+    "❤️ K-LOVE Radio",
+    "https:" + s + s + "://klove.com" + s + "listen",
+    use_container_width=True,
 )
 
 # --- SZŰRÉSI LOGIKA ---
@@ -148,8 +117,12 @@ for song in songs:
 
   filtered_songs.append(song)
 
-# --- FŐ FELÜLET (FÜLEK) ---
+# --- FŐ FELÜLET ---
 st.title("🎸 Dicsőítő Repertoár & Setlist Tervező")
+st.markdown(
+    f"Jelenleg **{len(songs)} keresztény dicséret** érhető el a dalbankban –"
+    " tematika, előadó és hangnem szerint szűrhetően."
+)
 
 tab1, tab2 = st.tabs([
     f"📚 Dalbank ({len(filtered_songs)} találat)",
@@ -159,82 +132,107 @@ tab1, tab2 = st.tabs([
 # === 1. FÜL: DALBANK ===
 with tab1:
   if not filtered_songs:
-    st.info(
-        "Nincs a szűrési feltételeknek megfelelő dal. Próbálj meg kevesebb"
+    st.warning(
+        "Ezzel a szűrési feltétellel nincs dal a listában. Próbálj meg kevesebb"
         " szűrőt beállítani!"
     )
   else:
-    items_per_page = 25
-    total_pages = max(1, math.ceil(len(filtered_songs) / items_per_page))
+    st.caption(f"Találatok száma: **{len(filtered_songs)} dal**")
 
-    if total_pages > 1:
-      page = st.number_input(
-          f"Oldal kiválasztása (1 – {total_pages}. oldal, oldalanként"
-          f" {items_per_page} dal):",
-          min_value=1,
-          max_value=total_pages,
-          value=1,
-          step=1,
+    # Ugyanaz a tiszta legördülő választó, mint a klasszikus zenei appban (nincs görgetési gond!)
+    song_options = {
+        f"#{song['id']} | {song['title']} – {song['artist']} ({song['key']})": (
+            song
+        )
+        for song in filtered_songs
+    }
+    selected_label = st.selectbox(
+        "Válassz egy dalt a listából:", list(song_options.keys())
+    )
+    song = song_options[selected_label]
+
+    st.divider()
+
+    # Dal fejléc adatai
+    c_head1, c_head2, c_head3 = st.columns((3, 1, 1))
+    with c_head1:
+      st.subheader(f"{song['title']}")
+      st.markdown(
+          f"**Előadó / Forrás:** {song['artist']} | **Stílus:**"
+          f" {song['origin']}"
       )
-    else:
-      page = 1
+    with c_head2:
+      st.metric("Hangnem", song["key"])
+    with c_head3:
+      st.metric("Tempó", f"{song['bpm']} BPM")
 
-    start_idx = (page - 1) * items_per_page
-    end_idx = start_idx + items_per_page
-    visible_songs = filtered_songs[start_idx:end_idx]
+    themes_str = " • ".join([f"🏷️ {t}" for t in song["themes"]])
+    st.info(f"**Tematika:** {themes_str}")
 
-    for song in visible_songs:
-      with st.expander(
-          f"**{song['id']}. {song['title']}** – {song['artist']} | 🎵"
-          f" {song['key']} | 🏷️ {', '.join(song['themes'])}"
-      ):
-        col1, col2 = st.columns([1.2, 1])
+    # Két oszlopos elrendezés: Dalszöveg + Média / Kotta / Setlist
+    col1, col2 = st.columns([1.3, 1])
 
-        with col1:
-          st.subheader("Dalszöveg")
-          st.text(song["lyrics"])
+    with col1:
+      st.markdown("### 📜 Dalszöveg")
+      with st.container(border=True):
+        st.text(song["lyrics"])
 
-        with col2:
-          st.subheader("Média és Kotta")
-          st.markdown(f"**Hangnem:** {song['key']} | **Tempó:** {song['bpm']} BPM")
+    with col2:
+      st.markdown("### 🎧 Meghallgatás & Kotta")
+      with st.container(border=True):
+        search_str = f"{song['title']} {song['artist']}"
+        yt_search_url = build_yt_search_url(search_str)
+        yt_url = song.get("youtube_url", "").strip()
 
-          clean_query = build_clean_query(song["title"], song["artist"])
-
-          # Kotta gomb (target="_top" + középső klikkel új lapon nyílik)
-          sheet_url = song.get("sheet_music_url") or make_google_search_url(
-              f"{clean_query} chords lyrics"
+        # Pontosan ugyanaz a logika, mint a tegnapi klasszikus zenei appban!
+        if "watch" + q_mark + "v" + eq in yt_url or "youtu.be" + s in yt_url:
+          st.video(yt_url)
+          st.link_button(
+              "▶️ Megnyitás YouTube-on", yt_url, use_container_width=True
           )
-          sheet_label = (
-              "🎼 Kotta megnyitása"
-              if song.get("sheet_music_url")
-              else "🎼 Kotta / Akkord keresése"
+          st.link_button(
+              "🔍 További verziók a YouTube-on",
+              yt_search_url,
+              use_container_width=True,
           )
-          render_link_button(sheet_label, sheet_url, "sheet-btn")
-
-          # YouTube gomb (target="_top" + középső klikkel új lapon nyílik)
-          yt_search_url = make_yt_search_url(clean_query)
-          render_link_button(
-              "▶️ Meghallgatás YouTube-on", yt_search_url, "yt-btn"
-          )
-          st.caption(
-              "💡 Tipp: Kattints középső egérgombbal (görgetővel), hogy új lapon"
-              " nyíljon meg!"
+        else:
+          st.link_button(
+              f"🔍 {song['title']} a YouTube-on",
+              yt_search_url,
+              use_container_width=True,
+              type="primary",
           )
 
-          # Hozzáadás a setlisthez
-          is_in_setlist = any(
-              s["id"] == song["id"] for s in st.session_state.setlist
+        sheet_url = song.get("sheet_music_url", "").strip()
+        if sheet_url:
+          st.link_button(
+              "🎼 Kotta megnyitása", sheet_url, use_container_width=True
           )
-          if is_in_setlist:
-            st.success("✅ Már benne van a koncertanyagban")
-          else:
-            if st.button(
-                "➕ Hozzáadás a koncertanyaghoz",
-                key=f"add_{song['id']}",
-                use_container_width=True,
-            ):
-              st.session_state.setlist.append(song)
-              st.rerun()
+        else:
+          chord_search_url = build_google_search_url(
+              f"{search_str} chords lyrics"
+          )
+          st.link_button(
+              "🎼 Kotta / Akkord keresése",
+              chord_search_url,
+              use_container_width=True,
+          )
+
+      st.markdown("### 📋 Koncertanyag")
+      is_in_setlist = any(
+          item["id"] == song["id"] for item in st.session_state.setlist
+      )
+      if is_in_setlist:
+        st.success("✅ Ez a dal már szerepel a koncertanyagodban!")
+      else:
+        if st.button(
+            "➕ Hozzáadás a koncertanyaghoz",
+            key=f"add_{song['id']}",
+            use_container_width=True,
+            type="primary",
+        ):
+          st.session_state.setlist.append(song)
+          st.rerun()
 
 # === 2. FÜL: KONCERTANYAG / SETLIST ===
 with tab2:
@@ -242,7 +240,8 @@ with tab2:
 
   if not st.session_state.setlist:
     st.info(
-        "Még üres a koncertanyagod. A Dalbank fülön tudsz dalokat hozzáadni!"
+        "Még üres a koncertanyagod. A Dalbank fülön válassz ki egy dalt, és"
+        " kattints a '➕ Hozzáadás a koncertanyaghoz' gombra!"
     )
   else:
     export_lines = ["KONCERTANYAG / DICSŐÍTŐ SETLIST\n" + "=" * 35 + "\n"]
@@ -274,8 +273,9 @@ with tab2:
           st.rerun()
 
       note_text = f" | Megjegyzés: {note}" if note else ""
-      clean_item_query = build_clean_query(item["title"], item["artist"])
-      yt_link = make_yt_search_url(clean_item_query)
+      yt_link = item.get("youtube_url") or build_yt_search_url(
+          f"{item['title']} {item['artist']}"
+      )
       export_lines.append(
           f"{idx + 1}. {item['title']} - {item['artist']} [{item['key']},"
           f" {item['bpm']} BPM]{note_text}\n   YouTube: {yt_link}\n"
