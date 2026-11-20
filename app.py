@@ -13,6 +13,13 @@ def load_songs():
     return json.load(f)
 
 
+def build_clean_query(title, artist):
+  raw = f"{title} {artist}"
+  for ch in ["/", "(", ")", ".", ","]:
+    raw = raw.replace(ch, " ")
+  return " ".join(raw.split())
+
+
 songs = load_songs()
 
 if "setlist" not in st.session_state:
@@ -104,10 +111,10 @@ with tab1:
           st.subheader("Média és Kotta")
           st.markdown(f"**Hangnem:** {song['key']} | **Tempó:** {song['bpm']} BPM")
 
-          # Automatikus keresőlinkek generálása, ha nincs fix URL
-          search_term = urllib.parse.quote(f"{song['title']} {song['artist']}")
-          chord_search_term = urllib.parse.quote(
-              f"{song['title']} {song['artist']} chords lyrics"
+          clean_query = build_clean_query(song["title"], song["artist"])
+          search_term = urllib.parse.quote_plus(clean_query)
+          chord_search_term = urllib.parse.quote_plus(
+              f"{clean_query} chords lyrics"
           )
 
           # Kotta gomb
@@ -162,7 +169,7 @@ with tab2:
     export_lines = ["KONCERTANYAG / DICSŐÍTŐ SETLIST\n" + "=" * 35 + "\n"]
 
     for idx, item in enumerate(st.session_state.setlist):
-      c1, c2, c3, c4 = st.columns([3, 3, 1, 1])
+      c1, c2, c3, c4 = st.columns()
       with c1:
         st.markdown(
             f"**{idx + 1}. {item['title']}** ({item['artist']}) –"
@@ -188,10 +195,11 @@ with tab2:
           st.rerun()
 
       note_text = f" | Megjegyzés: {note}" if note else ""
-      yt_link = (
-          item.get("youtube_url")
-          or "https://youtube.com"
-          + urllib.parse.quote(f"{item['title']} {item['artist']}")
+      clean_item_query = build_clean_query(item["title"], item["artist"])
+      yt_link = item.get(
+          "youtube_url"
+      ) or "https://youtube.com" + urllib.parse.quote_plus(
+          clean_item_query
       )
       export_lines.append(
           f"{idx + 1}. {item['title']} - {item['artist']} [{item['key']},"
@@ -201,7 +209,7 @@ with tab2:
     st.divider()
 
     final_text = "\n".join(export_lines)
-    col_exp1, col_exp2 = st.columns([1, 1])
+    col_exp1, col_exp2 = st.columns()
     with col_exp1:
       st.download_button(
           label="📥 Koncertanyag letöltése (.txt) a zenekarnak",
