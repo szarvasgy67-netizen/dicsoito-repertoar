@@ -1,4 +1,5 @@
 import json
+import math
 import urllib.parse
 import streamlit as st
 
@@ -6,8 +7,21 @@ st.set_page_config(
     page_title="Dicsőítő Repertoár", page_icon="🎸", layout="wide"
 )
 
+# Görgetősáv kényszerítése, hogy sose tűnjön el a Streamlit keretben
+st.markdown(
+    """
+    <style>
+        html, body, [data-testid="stAppViewContainer"], .main {
+            overflow-y: auto !important;
+            height: auto !important;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-@st.cache_data(ttl=300)
+
+@st.cache_data(ttl=60)
 def load_songs():
   with open("data/songs.json", "r", encoding="utf-8") as f:
     content = f.read()
@@ -104,10 +118,30 @@ with tab1:
         " szűrőt beállítani!"
     )
   else:
-    for song in filtered_songs:
+    # Lapozó (25 dal oldalanként a gyors böngészéshez)
+    items_per_page = 25
+    total_pages = max(1, math.ceil(len(filtered_songs) / items_per_page))
+
+    if total_pages > 1:
+      page = st.number_input(
+          f"Oldal kiválasztása (1 – {total_pages}. oldal, oldalanként"
+          f" {items_per_page} dal):",
+          min_value=1,
+          max_value=total_pages,
+          value=1,
+          step=1,
+      )
+    else:
+      page = 1
+
+    start_idx = (page - 1) * items_per_page
+    end_idx = start_idx + items_per_page
+    visible_songs = filtered_songs[start_idx:end_idx]
+
+    for song in visible_songs:
       with st.expander(
-          f"**{song['title']}** – {song['artist']} | 🎵 {song['key']} | 🏷️"
-          f" {', '.join(song['themes'])}"
+          f"**{song['id']}. {song['title']}** – {song['artist']} | 🎵"
+          f" {song['key']} | 🏷️ {', '.join(song['themes'])}"
       ):
         col1, col2 = st.columns([1.2, 1])
 
@@ -137,22 +171,28 @@ with tab1:
           )
           st.link_button(sheet_label, sheet_url, use_container_width=True)
 
-          # YouTube lejátszó + garantált külső megnyitás gomb
+          # Megbízható YouTube gomb (új lapon nyílik, így sosem tiltja le a kiadó)
           yt_search_url = (
               f"https://youtube.com{search_term}"
           )
           if song.get("youtube_url"):
-            st.video(song["youtube_url"])
             st.link_button(
-                "↗️ Megnyitás közvetlenül a YouTube-on",
+                "▶️ Lejátszás YouTube-on (új lapon)",
                 song["youtube_url"],
+                use_container_width=True,
+                type="primary",
+            )
+            st.link_button(
+                "🔍 Másik verzió keresése YouTube-on",
+                yt_search_url,
                 use_container_width=True,
             )
           else:
             st.link_button(
-                "▶️ Keresés és lejátszás YouTube-on",
+                "▶️ Meghallgatás YouTube-on",
                 yt_search_url,
                 use_container_width=True,
+                type="primary",
             )
 
           # Hozzáadás a setlisthez
