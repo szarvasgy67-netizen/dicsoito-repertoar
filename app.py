@@ -33,14 +33,20 @@ def normalize_match(text):
   return "".join(c for c in nfkd if c.isalnum() or c == " ").strip()
 
 
+s = chr(47)
+q_mark = chr(63)
+eq = chr(61)
+
+
 def build_yt_search_url(query_text):
-  words = clean_query(query_text).split()
-  return "https://youtube.com" + "+".join(words)
+  q = urllib.parse.urlencode({"search_query": clean_query(query_text)})
+  return "https:" + s + s + "://youtube.com" + s + "results" + q_mark + q
 
 
 def build_google_search_url(query_text):
   q = urllib.parse.urlencode({"q": clean_query(query_text)})
-  return "https://google.com?" + q
+  return "https:" + s + s + "://google.com" + s + "search" + q_mark + q
+
 
 
 songs = load_songs()
