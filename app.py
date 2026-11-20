@@ -1,3 +1,4 @@
+from collections import Counter
 import json
 import unicodedata
 import streamlit as st
@@ -29,6 +30,11 @@ def clean_query(text):
   return "+".join(ascii_text.split())
 
 
+def normalize_match(text):
+  nfkd = unicodedata.normalize("NFKD", str(text).lower())
+  return "".join([c for c in nfkd if c.isalnum() or c == " "]).strip()
+
+
 s = chr(47)
 q_mark = chr(63)
 eq = chr(61)
@@ -40,7 +46,7 @@ def build_yt_search_url(query_text):
       "https:"
       + s
       + s
-      + "www.youtube.com"
+      + "://youtube.com"
       + s
       + "results"
       + q_mark
@@ -78,21 +84,6 @@ selected_origin = st.sidebar.multiselect("Eredet / Stílus:", options=all_origin
 all_keys = sorted(list({song["key"] for song in songs}))
 selected_key = st.sidebar.multiselect("Hangnem:", options=all_keys)
 
-# --- OLDALSÁV: ÉLŐ RÁDIÓK ---
-st.sidebar.divider()
-st.sidebar.subheader("📻 Élő Dicsőítő Rádiók (USA)")
-st.sidebar.caption("Ingyenes 0-24 online stream inspirációhoz:")
-st.sidebar.link_button(
-    "🎵 Air1 Worship Now",
-    "https:" + s + s + "://air1.com" + s + "listen",
-    use_container_width=True,
-)
-st.sidebar.link_button(
-    "❤️ K-LOVE Radio",
-    "https:" + s + s + "://klove.com" + s + "listen",
-    use_container_width=True,
-)
-
 # --- SZŰRÉSI LOGIKA ---
 filtered_songs = []
 for song in songs:
@@ -124,9 +115,10 @@ st.markdown(
     " tematika, előadó és hangnem szerint szűrhetően."
 )
 
-tab1, tab2 = st.tabs([
+tab1, tab2, tab3 = st.tabs([
     f"📚 Dalbank ({len(filtered_songs)} találat)",
     f"📋 Koncertanyag / Setlist ({len(st.session_state.setlist)})",
+    "📊 Rádiós Trendek & Lista Elemző",
 ])
 
 # === 1. FÜL: DALBANK ===
@@ -139,7 +131,6 @@ with tab1:
   else:
     st.caption(f"Találatok száma: **{len(filtered_songs)} dal**")
 
-    # Ugyanaz a tiszta legördülő választó, mint a klasszikus zenei appban (nincs görgetési gond!)
     song_options = {
         f"#{song['id']} | {song['title']} – {song['artist']} ({song['key']})": (
             song
@@ -153,7 +144,6 @@ with tab1:
 
     st.divider()
 
-    # Dal fejléc adatai
     c_head1, c_head2, c_head3 = st.columns((3, 1, 1))
     with c_head1:
       st.subheader(f"{song['title']}")
@@ -169,7 +159,6 @@ with tab1:
     themes_str = " • ".join([f"🏷️ {t}" for t in song["themes"]])
     st.info(f"**Tematika:** {themes_str}")
 
-    # Két oszlopos elrendezés: Dalszöveg + Média / Kotta / Setlist
     col1, col2 = st.columns([1.3, 1])
 
     with col1:
@@ -184,7 +173,6 @@ with tab1:
         yt_search_url = build_yt_search_url(search_str)
         yt_url = song.get("youtube_url", "").strip()
 
-        # Pontosan ugyanaz a logika, mint a tegnapi klasszikus zenei appban!
         if "watch" + q_mark + "v" + eq in yt_url or "youtu.be" + s in yt_url:
           st.video(yt_url)
           st.link_button(
@@ -297,3 +285,151 @@ with tab2:
       if st.button("🧹 Teljes lista törlése"):
         st.session_state.setlist = []
         st.rerun()
+# === 3. FÜL: RÁDIÓS TRENDEK & LISTA ELEMZŐ ===
+with tab3:
+  st.subheader("📻 Amerikai Keresztény Rádiók Lejátszási Listái & Trendek")
+  st.markdown(
+      "Nézd meg, miket játszottak az elmúlt időszakban az **Air1 Worship Now** és"
+      " a **K-LOVE** csatornákon, vagy másold be a lejátszási listájukat"
+      " elemzésre!"
+  )
+
+  # 1. Gyorslinkek a hivatalos lejátszási listákhoz
+  r_col1, r_col2, r_col3 = st.columns(3)
+  with r_col1:
+    st.link_button(
+        "🎵 Air1 – Nemrég játszott dalok",
+        "https:" + s + s + "://air1.com" + s + "music" + s + "songs",
+        use_container_width=True,
+    )
+  with r_col2:
+    st.link_button(
+        "❤️ K-LOVE – Nemrég játszott dalok",
+        "https:" + s + s + "://klove.com" + s + "music" + s + "songs",
+        use_container_width=True,
+    )
+  with r_col3:
+    st.link_button(
+        "📊 OnlineRadioBox – Air1 Havi/Heti Playlist",
+        "https:"
+        + s
+        + s
+        + "onlineradiobox.com"
+        + s
+        + "us"
+        + s
+        + "air1"
+        + s
+        + "playlist"
+        + s,
+        use_container_width=True,
+    )
+
+  st.divider()
+
+  # 2. Copy-Paste Lejátszási Lista Elemző
+  st.markdown("### 📋 Rádiós Lejátszási Lista Gyors-Elemző")
+  st.caption(
+      "Nyisd meg a fenti listák egyikét, jelöld ki a dalokat (Ctrl+C), másold"
+      " ide (Ctrl+V), és a program kigyűjti a zenekarokat, a gyakoriságot és"
+      " összeveti a saját dalbankoddal!"
+  )
+
+  pasted_playlist = st.text_area(
+      "Másold ide a rádiós lejátszási listát (soronként pl. 'Előadó - Dal címe'"
+      " vagy 'Dal címe – Előadó'):",
+      height=180,
+      placeholder=(
+          "Példa:\nElevation Worship - Praise\nBrandon Lake - Gratitude\nPhil"
+          " Wickham - Living Hope\nElevation Worship - Praise\nHillsong"
+          " Worship - What A Beautiful Name"
+      ),
+  )
+
+  if pasted_playlist.strip():
+    raw_lines = [
+        line.strip() for line in pasted_playlist.splitlines() if line.strip()
+    ]
+    song_entries = []
+    artists_counter = Counter()
+
+    for line in raw_lines:
+      sep = " - " if " - " in line else (" – " if " – " in line else None)
+      if sep:
+        parts = line.split(sep, 1)
+        part_a, part_b = parts[0].strip(), parts[1].strip()
+        if len(part_a) > 6 and part_a[:2].isdigit() and ":" in part_a[:6]:
+          part_a = part_a.split(" ", 1)[-1].strip()
+        artists_counter[part_a] += 1
+        song_entries.append(f"{part_a} – {part_b}")
+      elif len(line) > 3 and not line.isdigit():
+        song_entries.append(line)
+
+    song_counts = Counter(song_entries)
+
+    st.success(
+        f"Feldolgozva: **{len(song_entries)} lejátszás**, **{len(song_counts)}"
+        " különböző dal**!"
+    )
+
+    an_col1, an_col2 = st.columns([1.4, 1])
+
+    with an_col1:
+      st.markdown("#### 🏆 Legtöbbet játszott dalok & Dalbank egyezés")
+      for entry, count in song_counts.most_common(30):
+        norm_entry = normalize_match(entry)
+        matched_song = None
+        for db_song in songs:
+          db_title = normalize_match(db_song["title"])
+          title_words = [w for w in db_title.split() if len(w) > 3]
+          if title_words and all(w in norm_entry for w in title_words[:3]):
+            matched_song = db_song
+            break
+
+        with st.container(border=True):
+          m1, m2 = st.columns([3, 1.2])
+          with m1:
+            st.markdown(f"**{entry}** *(lejátszva: {count}x)*")
+            if matched_song:
+              st.caption(
+                  f"✅ **Megvan a dalbankban (#{matched_song['id']})** | 🎵"
+                  f" {matched_song['key']} | 🏷️"
+                  f" {', '.join(matched_song['themes'])}"
+              )
+            else:
+              st.caption("🆕 Új dal (még nincs a dalbankban)")
+          with m2:
+            st.link_button(
+                "▶️ YouTube",
+                build_yt_search_url(entry),
+                use_container_width=True,
+            )
+
+    with an_col2:
+      st.markdown("#### 🎸 Zenekarok megoszlása a listában")
+      if artists_counter:
+        for artist_name, a_count in artists_counter.most_common(20):
+          st.markdown(f"- **{artist_name}**: {a_count} lejátszás")
+      else:
+        st.info(
+            "Ha 'Előadó - Dal címe' formátumban másolod be a listát, itt"
+            " zenekaronként is összesíti!"
+        )
+
+  st.divider()
+
+  # 3. Saját Repertoár Statisztika (Zenekaronként és Tematikánként)
+  st.markdown("### 📈 Saját Repertoár Statisztika (215 dal bontása)")
+  stat_col1, stat_col2 = st.columns(2)
+
+  with stat_col1:
+    st.markdown("#### Top Előadók / Források a dalbankodban")
+    db_artists = Counter(song["artist"] for song in songs)
+    for artist, cnt in db_artists.most_common(15):
+      st.markdown(f"- **{artist}**: {cnt} dal")
+
+  with stat_col2:
+    st.markdown("#### Tematikák megoszlása a dalbankodban")
+    db_themes = Counter(t for song in songs for t in song["themes"])
+    for theme, cnt in db_themes.most_common(15):
+      st.markdown(f"- **🏷️ {theme}**: {cnt} dal")
