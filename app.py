@@ -35,7 +35,7 @@ def normalize_match(text):
 
 def build_yt_search_url(query_text):
   words = clean_query(query_text).split()
-  return "https://duckduckgo.com+" + "+".join(words)
+  return "https://youtube.com" + "+".join(words)
 
 
 def build_google_search_url(query_text):
