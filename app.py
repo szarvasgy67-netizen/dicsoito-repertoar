@@ -348,6 +348,14 @@ with tab3:
     if st.button("🧹 Szövegmező törlése", use_container_width=True):
       st.session_state.radio_input = ""
       st.rerun()
+        
+  st.info(
+      "💡 **Használat:** Keress rá a neten egy friss dicsőítő toplistára,"
+      " töröld ki a lenti dobozt, és másold be a dalokat **Előadó - Dal címe**"
+      " formátumban (kötőjellel elválasztva). Utána nyomj **Ctrl+Enter**-t"
+      " (vagy kattints a dobozon kívülre), és a program azonnal elemzi és"
+      " megkeresi őket YouTube-on!"
+  )
 
   user_list = st.text_area(
       "Elemezhető dallista (bármilyen listát bemásolhatsz 'Előadó - Dal címe'"
