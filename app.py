@@ -1,6 +1,7 @@
 from collections import Counter
 import json
 import unicodedata
+import urllib.parse
 from bs4 import BeautifulSoup
 import requests
 import streamlit as st
@@ -26,7 +27,7 @@ def load_songs():
 def clean_query(text):
   nfkd = unicodedata.normalize("NFKD", str(text))
   ascii_text = "".join([c for c in nfkd if c.isalnum() or c == " "])
-  return "+".join(ascii_text.split())
+  return " ".join(ascii_text.split())
 
 
 def normalize_match(text):
@@ -34,30 +35,19 @@ def normalize_match(text):
   return "".join([c for c in nfkd if c.isalnum() or c == " "]).strip()
 
 
-s = chr(47)
-q_mark = chr(63)
-eq = chr(61)
-
-
 def build_yt_search_url(query_text):
-  q = clean_query(query_text)
-  return (
-      "https:"
-      + s
-      + s
-      + "://youtube.com"
-      + s
-      + "results"
-      + q_mark
-      + "search_query"
-      + eq
-      + q
+  q = urllib.parse.urlencode({"search_query": clean_query(query_text)})
+  return urllib.parse.urlunparse(
+      ("https", "://youtube.com", "/results", "", q, "")
   )
 
 
 def build_google_search_url(query_text):
-  q = clean_query(query_text)
-  return "https:" + s + s + "://google.com" + s + "search" + q_mark + "q" + eq + q
+  q = urllib.parse.urlencode({"q": clean_query(query_text)})
+  return urllib.parse.urlunparse(
+      ("https", "://google.com", "/search", "", q, "")
+  )
+
 
 
 @st.cache_data(ttl=3600)
