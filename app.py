@@ -123,131 +123,157 @@ tab1, tab2, tab3 = st.tabs((
     f"📋 Koncertanyag / Setlist ({len(st.session_state.setlist)})",
     "📊 Amerikai Rádiós Toplisták (Air1 & K-LOVE)",
 ))
-from collections import Counter
-import json
-import unicodedata
-import streamlit as st
+with tab1:
+  if not filtered_songs:
+    st.warning("Nincs találat a szűrésre.")
+  else:
+    song_options = {
+        f"#{song.get('id')} | {song.get('title')} – {song.get('artist')}"
+        f" ({song.get('key')})": song
+        for song in filtered_songs
+    }
+    selected_label = st.selectbox(
+        "Válassz egy dalt a listából:", list(song_options.keys())
+    )
+    song = song_options.get(selected_label)
+    st.divider()
 
-st.set_page_config(
-    page_title="Dicsőítő Repertoár & Setlist Tervező",
-    page_icon="🎸",
-    layout="wide",
-)
+    c_head1, c_head2, c_head3 = st.columns((3, 1, 1))
+    with c_head1:
+      st.subheader(song.get("title", ""))
+      st.markdown(
+          f"**Előadó:** {song.get('artist', '')} | **Stílus:**"
+          f" {song.get('origin', '')}"
+      )
+    with c_head2:
+      st.metric("Hangnem", song.get("key", ""))
+    with c_head3:
+      st.metric("Tempó", f"{song.get('bpm', '')} BPM")
 
+    st.info(
+        "**Tematika:** "
+        + " • ".join(f"🏷️ {t}" for t in song.get("themes", ()))
+    )
+    col1, col2 = st.columns((1.3, 1))
 
-@st.cache_data(ttl=60)
-def load_songs():
-  with open("data/songs.json", "r", encoding="utf-8") as f:
-    content = f.read()
-  try:
-    return json.loads(content)
-  except json.JSONDecodeError as e:
-    st.error(f"Hiba a data/songs.json fájlban a {e.lineno}. sorban: {e.msg}")
-    st.stop()
+    with col1:
+      st.markdown("### 📜 Dalszöveg")
+      with st.container(border=True):
+        st.text(song.get("lyrics", ""))
 
+    with col2:
+      st.markdown("### 🎧 Meghallgatás & Kotta")
+      with st.container(border=True):
+        search_str = f"{song.get('title', '')} {song.get('artist', '')}"
+        yt_search_url = build_yt_search_url(search_str)
+        yt_url = song.get("youtube_url", "").strip()
 
-def clean_query(text):
-  nfkd = unicodedata.normalize("NFKD", str(text))
-  ascii_text = "".join(c for c in nfkd if c.isalnum() or c == " ")
-  return "+".join(ascii_text.split())
+        if "watch" + q_mark + "v" + eq in yt_url or "youtu.be" + s in yt_url:
+          st.video(yt_url)
+          st.link_button(
+              "▶️ Megnyitás YouTube-on", yt_url, use_container_width=True
+          )
+          st.link_button(
+              "🔍 További verziók a YouTube-on",
+              yt_search_url,
+              use_container_width=True,
+          )
+        else:
+          st.link_button(
+              f"🔍 {song.get('title', '')} a YouTube-on",
+              yt_search_url,
+              use_container_width=True,
+          )
 
+        sheet_url = song.get("sheet_music_url", "").strip()
+        if sheet_url and sheet_url.rstrip("/") not in (
+            "https://youtube.com",
+            "http://youtube.com",
+        ):
+          st.link_button(
+              "🎼 Kotta megnyitása", sheet_url, use_container_width=True
+          )
+        else:
+          st.link_button(
+              "🎼 Kotta / Akkord keresése",
+              build_google_search_url(f"{search_str} chords lyrics"),
+              use_container_width=True,
+          )
 
-def normalize_match(text):
-  nfkd = unicodedata.normalize("NFKD", str(text).lower())
-  return "".join(c for c in nfkd if c.isalnum() or c == " ").strip()
+      st.markdown("### 📋 Koncertanyag")
+      if any(
+          item.get("id") == song.get("id") for item in st.session_state.setlist
+      ):
+        st.success("✅ Már benne van a koncertanyagban!")
+      elif st.button(
+          "➕ Hozzáadás a koncertanyaghoz",
+          key=f"add_{song.get('id')}",
+          use_container_width=True,
+          type="primary",
+      ):
+        st.session_state.setlist.append(song)
+        st.rerun()
 
+with tab2:
+  st.subheader("Összeállított dallista")
+  if not st.session_state.setlist:
+    st.info("Még üres a koncertanyagod.")
+  else:
+    export_lines = list(("KONCERTANYAG / DICSŐÍTŐ SETLIST\n" + "=" * 35 + "\n",))
+    for idx, item in enumerate(st.session_state.setlist):
+      c1, c2, c3, c4 = st.columns((3, 2, 0.5, 0.5))
+      with c1:
+        st.markdown(
+            f"**{idx + 1}. {item.get('title', '')}** ({item.get('artist', '')}) –"
+            f" *{item.get('key', '')}*"
+        )
+      with c2:
+        note = st.text_input(
+            "Megjegyzés",
+            key=f"note_{item.get('id', idx)}",
+            placeholder="pl. Átkötés, ima...",
+            label_visibility="collapsed",
+        )
+      with c3:
+        if idx > 0 and st.button("⬆️", key=f"up_{item.get('id', idx)}"):
+          curr = st.session_state.setlist.pop(idx)
+          st.session_state.setlist.insert(idx - 1, curr)
+          st.rerun()
+      with c4:
+        if st.button("🗑️", key=f"del_{item.get('id', idx)}"):
+          st.session_state.setlist.pop(idx)
+          st.rerun()
+      note_text = f" | Megjegyzés: {note}" if note else ""
+      raw_item_yt = item.get("youtube_url", "").strip()
+      yt_link = (
+          raw_item_yt
+          if (
+              "watch" + q_mark + "v" + eq in raw_item_yt
+              or "youtu.be" + s in raw_item_yt
+          )
+          else build_yt_search_url(
+              f"{item.get('title', '')} {item.get('artist', '')}"
+          )
+      )
+      export_lines.append(
+          f"{idx + 1}. {item.get('title', '')} - {item.get('artist', '')} ({item.get('key', '')},"
+          f" {item.get('bpm', '')} BPM){note_text}\n   YouTube: {yt_link}\n"
+      )
 
-s = chr(47)
-q_mark = chr(63)
-eq = chr(61)
-
-
-def build_yt_search_url(query_text):
-  q = clean_query(query_text)
-  return (
-      "https:"
-      + s
-      + s
-      + "://youtube.com"
-      + s
-      + "results"
-      + q_mark
-      + "search_query"
-      + eq
-      + q
-  )
-
-
-def build_google_search_url(query_text):
-  q = clean_query(query_text)
-  return (
-      "https:" + s + s + "://google.com" + s + "search" + q_mark + "q" + eq + q
-  )
-
-
-songs = load_songs()
-if "setlist" not in st.session_state:
-  st.session_state.setlist = list()
-
-st.sidebar.header("🔍 Dal keresése és szűrése")
-search_query = st.sidebar.text_input(
-    "Keresés címre, előadóra vagy dalszövegre:",
-    placeholder="pl. Óceánok, Hillsong, kegyelem...",
-)
-
-all_artists = sorted(list({song.get("artist", "") for song in songs}))
-selected_artists = st.sidebar.multiselect("Előadó:", options=all_artists)
-
-all_themes = sorted(
-    list({theme for song in songs for theme in song.get("themes", ())})
-)
-selected_themes = st.sidebar.multiselect("Tematika:", options=all_themes)
-all_origins = sorted(list({song.get("origin", "") for song in songs}))
-selected_origin = st.sidebar.multiselect("Eredet / Stílus:", options=all_origins)
-all_keys = sorted(list({song.get("key", "") for song in songs}))
-selected_key = st.sidebar.multiselect("Hangnem:", options=all_keys)
-
-filtered_songs = list()
-for song in songs:
-  if search_query:
-    q = search_query.lower()
-    if (
-        q not in song.get("title", "").lower()
-        and q not in song.get("artist", "").lower()
-        and q not in song.get("lyrics", "").lower()
-    ):
-      continue
-  if selected_artists and song.get("artist", "") not in selected_artists:
-    continue
-  if selected_themes and not all(
-      t in song.get("themes", ()) for t in selected_themes
-  ):
-    continue
-  if selected_origin and song.get("origin", "") not in selected_origin:
-    continue
-  if selected_key and song.get("key", "") not in selected_key:
-    continue
-  filtered_songs.append(song)
-
-st.title("🎸 Dicsőítő Repertoár & Setlist Tervező")
-if (
-    search_query
-    or selected_artists
-    or selected_themes
-    or selected_origin
-    or selected_key
-):
-  st.success(
-      f"🎯 Szűrés aktív: {len(filtered_songs)} dal felel meg a feltételeknek!"
-  )
-else:
-  st.markdown(f"Jelenleg **{len(songs)} keresztény dicséret** érhető el.")
-
-tab1, tab2, tab3 = st.tabs((
-    f"📚 Dalbank ({len(filtered_songs)} találat)",
-    f"📋 Koncertanyag / Setlist ({len(st.session_state.setlist)})",
-    "📊 Amerikai Rádiós Toplisták (Air1 & K-LOVE)",
-))
+    st.divider()
+    col_exp1, col_exp2 = st.columns(2)
+    with col_exp1:
+      st.download_button(
+          "📥 Koncertanyag letöltése (.txt)",
+          "\n".join(export_lines),
+          "koncertanyag_setlist.txt",
+          "text/plain",
+          type="primary",
+      )
+    with col_exp2:
+      if st.button("🧹 Teljes lista törlése"):
+        st.session_state.setlist = list()
+        st.rerun()
 with tab3:
   st.subheader("📻 Amerikai Rádiós Toplisták & Lista Elemző")
   st.caption(
