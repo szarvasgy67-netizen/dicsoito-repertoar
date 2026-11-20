@@ -39,15 +39,15 @@ s = chr(47)
 q_mark = chr(63)
 eq = chr(61)
 
-
 def build_yt_search_url(query_text):
   q = urllib.parse.urlencode({"search_query": clean_query(query_text)})
-  return "https:" + s + s + "://youtube.com" + s + "results" + q_mark + q
+  return f"https://youtube.com?{q}"
 
 
 def build_google_search_url(query_text):
   q = urllib.parse.urlencode({"q": clean_query(query_text)})
-  return "https:" + s + s + "://google.com" + s + "search" + q_mark + q
+  return f"https://google.com?{q}"
+
 
 
 songs = load_songs()
