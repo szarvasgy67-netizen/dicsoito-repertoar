@@ -110,7 +110,6 @@ tab1, tab2, tab3 = st.tabs([
     "📊 Amerikai Rádiós Toplisták (Air1 & K-LOVE)",
 ])
 
-
 with tab1:
   if not filtered_songs:
     st.warning("Nincs találat a szűrésre.")
@@ -153,9 +152,8 @@ with tab1:
       with st.container(border=True):
         search_str = f"{song['title']} {song['artist']}"
         yt_search_url = build_yt_search_url(search_str)
-        yt_url = song.get("youtube_url", "").strip()
-        if not yt_url.startswith("http"):
-          yt_url = ""
+        raw_yt = song.get("youtube_url", "").strip()
+        yt_url = raw_yt if raw_yt.startswith("http") else ""
 
         if "watch" + q_mark + "v" + eq in yt_url or "youtu.be" + s in yt_url:
           st.video(yt_url)
@@ -174,25 +172,8 @@ with tab1:
               use_container_width=True,
           )
 
-        sheet_url = song.get("sheet_music_url", "").strip()
-        if not sheet_url.startswith("http"):
-          sheet_url = ""
-        if sheet_url:
-          st.link_button(
-              "🎼 Kotta megnyitása", sheet_url, use_container_width=True
-          )
-        else:
-          st.link_button(
-              "🎼 Kotta / Akkord keresése",
-              build_google_search_url(f"{search_str} chords lyrics"),
-              use_container_width=True,
-          )
-
-        sheet_url = song.get("sheet_music_url", "").strip()
-        if not sheet_url.startswith("http"):  # <--- EZT SZÚRD BE IDE
-          sheet_url = ""  # <--- ÉS EZT
-        if sheet_url:
-
+        raw_sheet = song.get("sheet_music_url", "").strip()
+        sheet_url = raw_sheet if raw_sheet.startswith("http") else ""
         if sheet_url:
           st.link_button(
               "🎼 Kotta megnyitása", sheet_url, use_container_width=True
@@ -215,7 +196,6 @@ with tab1:
       ):
         st.session_state.setlist.append(song)
         st.rerun()
-
 with tab2:
   st.subheader("Összeállított dallista")
   if not st.session_state.setlist:
@@ -248,8 +228,11 @@ with tab2:
           st.session_state.setlist.pop(idx)
           st.rerun()
       note_text = f" | Megjegyzés: {note}" if note else ""
-      yt_link = item.get("youtube_url") or build_yt_search_url(
-          f"{item['title']} {item['artist']}"
+      raw_item_yt = item.get("youtube_url", "").strip()
+      yt_link = (
+          raw_item_yt
+          if raw_item_yt.startswith("http")
+          else build_yt_search_url(f"{item['title']} {item['artist']}")
       )
       export_lines.append(
           f"{idx + 1}. {item['title']} - {item['artist']} [{item['key']},"
@@ -277,7 +260,6 @@ with tab3:
       " és saját lista-elemző – külső szerverhiba nélkül!"
   )
 
-  # Beépített, azonnal működő Air1 & K-LOVE Top 30 rotációs lista
   preset_radio_list = "\n".join([
       "Elevation Worship - Praise",
       "Brandon Lake - Gratitude",
@@ -325,7 +307,7 @@ with tab3:
     if st.button("🧹 Szövegmező törlése", use_container_width=True):
       st.session_state.radio_input = ""
       st.rerun()
-        
+
   st.info(
       "💡 **Használat:** Keress rá a neten egy friss dicsőítő toplistára,"
       " töröld ki a lenti dobozt, és másold be a dalokat **Előadó - Dal címe**"
