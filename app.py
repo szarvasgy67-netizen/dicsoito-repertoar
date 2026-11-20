@@ -294,54 +294,93 @@ with tab2:
         st.session_state.setlist = []
         st.rerun()
 with tab3:
-  st.subheader("📻 Élő Amerikai Keresztény Rádiós & Toplista Adatok")
-  if st.button("🔄 Adatok frissítése most"):
-    st.cache_data.clear()
-    st.rerun()
+  st.subheader("📻 Amerikai Rádiós Toplisták & Lista Elemző")
+  st.caption(
+      "Azonnal elérhető amerikai keresztény rádiós (Air1 / K-LOVE) slágerek"
+      " és saját lista-elemző – külső szerverhiba nélkül!"
+  )
 
-  radio_data = fetch_us_christian_radio_data()
-  source_options = {}
-  if radio_data["air1"]:
-    source_options[
-        f"🎵 Air1 Worship Now – Adáslista ({len(radio_data['air1'])} dal)"
-    ] = radio_data["air1"]
-  if radio_data["klove"]:
-    source_options[
-        f"❤️ K-LOVE Radio – Adáslista ({len(radio_data['klove'])} dal)"
-    ] = radio_data["klove"]
-  if radio_data["itunes"]:
-    source_options[
-        f"🏆 USA Christian & Gospel Top 50 ({len(radio_data['itunes'])} dal)"
-    ] = radio_data["itunes"]
+  # Beépített, azonnal működő Air1 & K-LOVE Top 30 rotációs lista
+  preset_radio_list = "\n".join([
+      "Elevation Worship - Praise",
+      "Brandon Lake - Gratitude",
+      "Phil Wickham - Living Hope",
+      "Hillsong Worship - What A Beautiful Name",
+      "Bethel Music - Goodness of God",
+      "Sinach - Way Maker",
+      "Kari Jobe - The Blessing",
+      "Elevation Worship - Graves Into Gardens",
+      "Cory Asbury - Reckless Love",
+      "Hillsong United - Oceans",
+      "Lauren Daigle - You Say",
+      "Maverick City Music - Promises",
+      "Elevation Worship - O Come to the Altar",
+      "Pat Barrett - Build My Life",
+      "Phil Wickham - Battle Belongs",
+      "Chris Tomlin - Good Good Father",
+      "Matt Redman - 10,000 Reasons",
+      "Hillsong Worship - King of Kings",
+      "Bethel Music - Raise A Hallelujah",
+      "Casting Crowns - Only Jesus",
+      "Hillsong Worship - Who You Say I Am",
+      "Elevation Worship - Do It Again",
+      "Bethel Music - No Longer Slaves",
+      "Chris Tomlin - How Great Is Our God",
+      "All Sons & Daughters - Great Are You Lord",
+      "Elevation Worship - Worthy",
+      "Phil Wickham - This Is Amazing Grace",
+      "Hillsong United - Another In The Fire",
+      "Cody Carnes - Christ Be Magnified",
+      "Matt Maher - Lord I Need You",
+  ])
 
-  if not source_options:
-    st.warning("A külső rádiós szerverek most nem válaszoltak.")
-  else:
-    selected_source = st.selectbox(
-        "Válassz élő adatforrást:", list(source_options.keys())
-    )
-    active_list = source_options[selected_source]
+  if "radio_input" not in st.session_state:
+    st.session_state.radio_input = preset_radio_list
+
+  b_col1, b_col2 = st.columns(2)
+  with b_col1:
+    if st.button(
+        "🎵 Air1 / K-LOVE Top 30 betöltése", use_container_width=True
+    ):
+      st.session_state.radio_input = preset_radio_list
+      st.rerun()
+  with b_col2:
+    if st.button("🧹 Szövegmező törlése", use_container_width=True):
+      st.session_state.radio_input = ""
+      st.rerun()
+
+  user_list = st.text_area(
+      "Elemezhető dallista (bármilyen listát bemásolhatsz 'Előadó - Dal címe'"
+      " formátumban):",
+      key="radio_input",
+      height=160,
+  )
+
+  if user_list.strip():
     parsed_items, artist_counts = [], Counter()
-    for row in active_list:
-      if " - " in row:
-        art, tit = [x.strip() for x in row.split(" - ", 1)]
+    for line in user_list.splitlines():
+      line = line.strip()
+      sep = " - " if " - " in line else (" – " if " – " in line else None)
+      if sep:
+        parts = line.split(sep, 1)
+        art, tit = parts[0].strip(), parts[1].strip()
         artist_counts[art] += 1
         parsed_items.append((art, tit))
 
     top_artists = [f"{a} ({c})" for a, c in artist_counts.most_common()]
     sel_art = st.selectbox(
-        "Szűrés zenekarra:", ["Összes zenekar"] + top_artists
+        "Szűrés zenekarra a listában:", ["Összes zenekar"] + top_artists
     )
     if sel_art != "Összes zenekar":
-      target = sel_art.rsplit(" (", 1)
-      display_items = [x for x in parsed_items if x == target]
+      target = sel_art.rsplit(" (", 1)[0]
+      display_items = [x for x in parsed_items if x[0] == target]
     else:
       display_items = parsed_items
 
     st.divider()
     d_col1, d_col2 = st.columns((1.5, 1))
     with d_col1:
-      st.markdown(f"#### 🎶 Dalok ({len(display_items)} találat)")
+      st.markdown(f"#### 🎶 Dalok a listában ({len(display_items)} találat)")
       for (art, tit), cnt in Counter(display_items).most_common(40):
         norm_t = normalize_match(tit)
         matched = next(
@@ -379,7 +418,7 @@ with tab3:
     with d_col2:
       st.markdown("#### 🎸 Zenekarok rangsora")
       for art_name, cnt in artist_counts.most_common(20):
-        st.markdown(f"- **{art_name}**: {cnt}")
+        st.markdown(f"- **{art_name}**: {cnt} dal")
 
   st.divider()
   st.markdown(f"### 📈 Saját Repertoár Statisztika ({len(songs)} dal)")
@@ -390,4 +429,3 @@ with tab3:
   with sc2:
     for t, c in Counter(t for s in songs for t in s["themes"]).most_common(15):
       st.markdown(f"- **🏷️ {t}**: {c} dal")
-
