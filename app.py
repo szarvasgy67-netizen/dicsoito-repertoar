@@ -153,7 +153,11 @@ with tab1:
         search_str = f"{song['title']} {song['artist']}"
         yt_search_url = build_yt_search_url(search_str)
         raw_yt = song.get("youtube_url", "").strip()
-        yt_url = raw_yt if raw_yt.startswith("http") else ""
+        yt_url = (
+            raw_yt if ("watch?v=" in raw_yt or "youtu.be/" in raw_yt) else ""
+        )
+        
+
 
         if "watch" + q_mark + "v" + eq in yt_url or "youtu.be" + s in yt_url:
           st.video(yt_url)
