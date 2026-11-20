@@ -37,7 +37,7 @@ def load_songs():
 
 def build_clean_query(title, artist):
   raw = f"{title} {artist}"
-  for ch in ["/", "(", ")", ".", ","]:
+  for ch in ["/", "(", ")", ".", ",", "&"]:
     raw = raw.replace(ch, " ")
   return " ".join(raw.split())
 
@@ -118,7 +118,6 @@ with tab1:
         " szűrőt beállítani!"
     )
   else:
-    # Lapozó (25 dal oldalanként a gyors böngészéshez)
     items_per_page = 25
     total_pages = max(1, math.ceil(len(filtered_songs) / items_per_page))
 
@@ -162,7 +161,7 @@ with tab1:
           # Kotta gomb
           sheet_url = (
               song.get("sheet_music_url")
-              or f"https://google.com{chord_search_term}"
+              or "https://google.com" + chord_search_term
           )
           sheet_label = (
               "🎼 Kotta megnyitása"
@@ -171,9 +170,9 @@ with tab1:
           )
           st.link_button(sheet_label, sheet_url, use_container_width=True)
 
-          # Megbízható YouTube gomb (új lapon nyílik, így sosem tiltja le a kiadó)
+          # Javított, pontos YouTube kereső és lejátszó URL
           yt_search_url = (
-              f"https://youtube.com{search_term}"
+              "https://youtube.com" + search_term
           )
           if song.get("youtube_url"):
             st.link_button(
@@ -249,10 +248,10 @@ with tab2:
 
       note_text = f" | Megjegyzés: {note}" if note else ""
       clean_item_query = build_clean_query(item["title"], item["artist"])
-      yt_link = item.get(
-          "youtube_url"
-      ) or "https://youtube.com" + urllib.parse.quote_plus(
-          clean_item_query
+      yt_link = (
+          item.get("youtube_url")
+          or "https://youtube.com"
+          + urllib.parse.quote_plus(clean_item_query)
       )
       export_lines.append(
           f"{idx + 1}. {item['title']} - {item['artist']} [{item['key']},"
