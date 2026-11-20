@@ -7,7 +7,7 @@ st.set_page_config(
     page_title="Dicsőítő Repertoár", page_icon="🎸", layout="wide"
 )
 
-# Görgetősáv kényszerítése + natív HTML gombok stílusa (hogy sose legyen about:blank#blocked)
+# Görgetősáv kényszerítése + natív HTML gombok stílusa
 st.markdown(
     """
     <style>
@@ -84,8 +84,8 @@ def make_google_search_url(query_text):
 
 def render_link_button(label, url, css_class="sheet-btn"):
   st.markdown(
-      f'<a href="{url}" target="_blank" rel="noopener noreferrer"'
-      f' class="ext-btn {css_class}">{label}</a>',
+      f'<a href="{url}" target="_top" rel="noopener noreferrer" class="ext-btn'
+      f' {css_class}">{label}</a>',
       unsafe_allow_html=True,
   )
 
@@ -200,7 +200,7 @@ with tab1:
 
           clean_query = build_clean_query(song["title"], song["artist"])
 
-          # Natív HTML kotta gomb (sose blokkolja a böngésző)
+          # Kotta gomb (target="_top" + középső klikkel új lapon nyílik)
           sheet_url = song.get("sheet_music_url") or make_google_search_url(
               f"{clean_query} chords lyrics"
           )
@@ -211,10 +211,14 @@ with tab1:
           )
           render_link_button(sheet_label, sheet_url, "sheet-btn")
 
-          # Natív HTML piros YouTube gomb (sose blokkolja a böngésző)
+          # YouTube gomb (target="_top" + középső klikkel új lapon nyílik)
           yt_search_url = make_yt_search_url(clean_query)
           render_link_button(
               "▶️ Meghallgatás YouTube-on", yt_search_url, "yt-btn"
+          )
+          st.caption(
+              "💡 Tipp: Kattints középső egérgombbal (görgetővel), hogy új lapon"
+              " nyíljon meg!"
           )
 
           # Hozzáadás a setlisthez
