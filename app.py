@@ -4,6 +4,7 @@ import unicodedata
 from bs4 import BeautifulSoup
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="Dicsőítő Repertoár & Setlist Tervező",
@@ -61,6 +62,22 @@ def build_yt_search_url(query_text):
 def build_google_search_url(query_text):
   q = clean_query(query_text)
   return "https:" + s + s + "://google.com" + s + "search" + q_mark + "q" + eq + q
+
+
+def external_open_button(label, url, bg_color="#FF0000"):
+  """A klasszikus zongorás appban bevált components.html alapú, blokkolásmentes külső megnyitó gomb."""
+  safe_url = url.replace('"', "%22").replace("'", "%27")
+  html_code = f"""
+    <div style="margin: 0; padding: 0;">
+        <button onclick="window.open('{safe_url}', '_blank', 'noopener,noreferrer')"
+                style="width: 100%; padding: 10px 14px; background-color: {bg_color}; color: white;
+                       border: none; border-radius: 8px; font-family: sans-serif; font-size: 14px;
+                       font-weight: 600; cursor: pointer;">
+            {label}
+        </button>
+    </div>
+    """
+  components.html(html_code, height=46)
 
 
 songs = load_songs()
@@ -184,35 +201,34 @@ with tab1:
 
         if "watch" + q_mark + "v" + eq in yt_url or "youtu.be" + s in yt_url:
           st.video(yt_url)
-          st.link_button(
-              "▶️ Megnyitás YouTube-on", yt_url, use_container_width=True
+          external_open_button(
+              "▶️ Megnyitás YouTube-on", yt_url, bg_color="#FF0000"
           )
-          st.link_button(
+          external_open_button(
               "🔍 További verziók a YouTube-on",
               yt_search_url,
-              use_container_width=True,
+              bg_color="#333333",
           )
         else:
-          st.link_button(
-              f"🔍 {song['title']} a YouTube-on",
+          external_open_button(
+              f"▶️ {song['title']} a YouTube-on",
               yt_search_url,
-              use_container_width=True,
-              type="primary",
+              bg_color="#FF0000",
           )
 
         sheet_url = song.get("sheet_music_url", "").strip()
         if sheet_url:
-          st.link_button(
-              "🎼 Kotta megnyitása", sheet_url, use_container_width=True
+          external_open_button(
+              "🎼 Kotta megnyitása", sheet_url, bg_color="#1E3A8A"
           )
         else:
           chord_search_url = build_google_search_url(
               f"{search_str} chords lyrics"
           )
-          st.link_button(
+          external_open_button(
               "🎼 Kotta / Akkord keresése",
               chord_search_url,
-              use_container_width=True,
+              bg_color="#1E3A8A",
           )
 
       st.markdown("### 📋 Koncertanyag")
@@ -325,8 +341,8 @@ def fetch_us_christian_radio_data():
       soup = BeautifulSoup(r.text, "html.parser")
       for row in soup.select("table.tablelist-schedule tr"):
         cols = [c.get_text(" ", strip=True) for c in row.find_all("td")]
-        if len(cols) >= 2 and " - " in cols[1]:
-          results["air1"].append(cols[1])
+        if len(cols) >= 2 and " - " in cols:
+          results["air1"].append(cols)
   except Exception:
     pass
 
@@ -350,8 +366,8 @@ def fetch_us_christian_radio_data():
       soup = BeautifulSoup(r.text, "html.parser")
       for row in soup.select("table.tablelist-schedule tr"):
         cols = [c.get_text(" ", strip=True) for c in row.find_all("td")]
-        if len(cols) >= 2 and " - " in cols[1]:
-          results["klove"].append(cols[1])
+        if len(cols) >= 2 and " - " in cols:
+          results["klove"].append(cols)
   except Exception:
     pass
 
@@ -399,7 +415,7 @@ with tab3:
       " európai tiltás nélkül!"
   )
 
-  col_btn1, col_btn2 = st.columns([1, 3])
+  col_btn1, col_btn2 = st.columns()
   with col_btn1:
     if st.button("🔄 Adatok frissítése most", use_container_width=True):
       st.cache_data.clear()
@@ -451,9 +467,9 @@ with tab3:
     )
 
     if selected_radio_artist != "Összes zenekar":
-      target_artist = selected_radio_artist.rsplit(" (", 1)[0]
+      target_artist = selected_radio_artist.rsplit(" (", 1)
       display_items = [
-          item for item in parsed_items if item[0] == target_artist
+          item for item in parsed_items if item == target_artist
       ]
     else:
       display_items = parsed_items
@@ -478,7 +494,7 @@ with tab3:
             break
 
         with st.container(border=True):
-          m1, m2 = st.columns([3, 1.2])
+          m1, m2 = st.columns([3, 1.3])
           with m1:
             count_badge = (
                 f" *(lejátszva: {play_count}x)*" if play_count > 1 else ""
@@ -493,10 +509,11 @@ with tab3:
             else:
               st.caption("🆕 Új dal (még nincs a dalbankban)")
           with m2:
-            st.link_button(
+            # Ugyanaz a blokkolásmentes components.html gomb, mint az 1. fülön!
+            external_open_button(
                 "▶️ YouTube",
                 build_yt_search_url(f"{art} {tit}"),
-                use_container_width=True,
+                bg_color="#FF0000",
             )
 
     with d_col2:
