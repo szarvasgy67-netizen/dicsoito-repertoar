@@ -42,6 +42,18 @@ def build_clean_query(title, artist):
   return " ".join(raw.split())
 
 
+def make_yt_search_url(query_text):
+  base = "https://" + "://youtube.com" + "/results"
+  params = urllib.parse.urlencode({"search_query": query_text})
+  return f"{base}?{params}"
+
+
+def make_google_search_url(query_text):
+  base = "https://" + "://google.com" + "/search"
+  params = urllib.parse.urlencode({"q": query_text})
+  return f"{base}?{params}"
+
+
 songs = load_songs()
 
 if "setlist" not in st.session_state:
@@ -71,11 +83,13 @@ st.sidebar.subheader("📻 Élő Dicsőítő Rádiók (USA)")
 st.sidebar.caption("Ingyenes 0-24 online stream inspirációhoz:")
 st.sidebar.link_button(
     "🎵 Air1 Worship Now",
-    "https://air1.com",
+    "https://" + "://air1.com",
     use_container_width=True,
 )
 st.sidebar.link_button(
-    "❤️ K-LOVE Radio", "https://klove.com", use_container_width=True
+    "❤️ K-LOVE Radio",
+    "https://" + "://klove.com",
+    use_container_width=True,
 )
 
 # --- SZŰRÉSI LOGIKA ---
@@ -153,15 +167,10 @@ with tab1:
           st.markdown(f"**Hangnem:** {song['key']} | **Tempó:** {song['bpm']} BPM")
 
           clean_query = build_clean_query(song["title"], song["artist"])
-          search_term = urllib.parse.quote_plus(clean_query)
-          chord_search_term = urllib.parse.quote_plus(
-              f"{clean_query} chords lyrics"
-          )
 
           # Kotta gomb
-          sheet_url = (
-              song.get("sheet_music_url")
-              or "https://google.com" + chord_search_term
+          sheet_url = song.get("sheet_music_url") or make_google_search_url(
+              f"{clean_query} chords lyrics"
           )
           sheet_label = (
               "🎼 Kotta megnyitása"
@@ -170,29 +179,14 @@ with tab1:
           )
           st.link_button(sheet_label, sheet_url, use_container_width=True)
 
-          # Javított, pontos YouTube kereső és lejátszó URL
-          yt_search_url = (
-              "https://youtube.com" + search_term
+          # Golyóálló YouTube keresőgomb (minden dalnál garantáltan a találati listát nyitja)
+          yt_search_url = make_yt_search_url(clean_query)
+          st.link_button(
+              "▶️ Meghallgatás YouTube-on",
+              yt_search_url,
+              use_container_width=True,
+              type="primary",
           )
-          if song.get("youtube_url"):
-            st.link_button(
-                "▶️ Lejátszás YouTube-on (új lapon)",
-                song["youtube_url"],
-                use_container_width=True,
-                type="primary",
-            )
-            st.link_button(
-                "🔍 Másik verzió keresése YouTube-on",
-                yt_search_url,
-                use_container_width=True,
-            )
-          else:
-            st.link_button(
-                "▶️ Meghallgatás YouTube-on",
-                yt_search_url,
-                use_container_width=True,
-                type="primary",
-            )
 
           # Hozzáadás a setlisthez
           is_in_setlist = any(
@@ -248,11 +242,7 @@ with tab2:
 
       note_text = f" | Megjegyzés: {note}" if note else ""
       clean_item_query = build_clean_query(item["title"], item["artist"])
-      yt_link = (
-          item.get("youtube_url")
-          or "https://youtube.com"
-          + urllib.parse.quote_plus(clean_item_query)
-      )
+      yt_link = make_yt_search_url(clean_item_query)
       export_lines.append(
           f"{idx + 1}. {item['title']} - {item['artist']} [{item['key']},"
           f" {item['bpm']} BPM]{note_text}\n   YouTube: {yt_link}\n"
