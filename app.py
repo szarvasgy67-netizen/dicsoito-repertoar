@@ -7,6 +7,7 @@ st.set_page_config(
 )
 
 
+@st.cache_data(ttl=300)
 def load_songs():
   with open("data/songs.json", "r", encoding="utf-8") as f:
     content = f.read()
@@ -16,19 +17,6 @@ def load_songs():
     st.error(
         f"⚠️ Hiba a data/songs.json fájlban a **{e.lineno}. sorban** (a"
         f" {e.colno}. karakternél): {e.msg}"
-    )
-    lines = content.splitlines()
-    start = max(0, e.lineno - 4)
-    end = min(len(lines), e.lineno + 3)
-    snippet = "\n".join(
-        f"{'>>> ' if i + 1 == e.lineno else '    '}{i + 1}: {lines[i]}"
-        for i in range(start, end)
-    )
-    st.code(snippet, language="json")
-    st.info(
-        "Tipp: Nézd meg a megjelölt sor környékét a GitHubon — valószínűleg"
-        " egy felesleges `]` zárójel maradt ott, vagy hiányzik egy vessző `},`"
-        " két dal között."
     )
     st.stop()
 
@@ -137,6 +125,7 @@ with tab1:
               f"{clean_query} chords lyrics"
           )
 
+          # Kotta gomb
           sheet_url = (
               song.get("sheet_music_url")
               or f"https://google.com{chord_search_term}"
@@ -148,18 +137,25 @@ with tab1:
           )
           st.link_button(sheet_label, sheet_url, use_container_width=True)
 
+          # YouTube lejátszó + garantált külső megnyitás gomb
+          yt_search_url = (
+              f"https://youtube.com{search_term}"
+          )
           if song.get("youtube_url"):
             st.video(song["youtube_url"])
-          else:
-            yt_search_url = (
-                f"https://youtube.com{search_term}"
-            )
             st.link_button(
-                "▶️ Meghallgatás YouTube-on",
+                "↗️ Megnyitás közvetlenül a YouTube-on",
+                song["youtube_url"],
+                use_container_width=True,
+            )
+          else:
+            st.link_button(
+                "▶️ Keresés és lejátszás YouTube-on",
                 yt_search_url,
                 use_container_width=True,
             )
 
+          # Hozzáadás a setlisthez
           is_in_setlist = any(
               s["id"] == song["id"] for s in st.session_state.setlist
           )
