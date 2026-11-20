@@ -2,8 +2,6 @@ from collections import Counter
 import json
 import unicodedata
 import urllib.parse
-from bs4 import BeautifulSoup
-import requests
 import streamlit as st
 
 st.set_page_config(
@@ -35,19 +33,14 @@ def normalize_match(text):
   return "".join([c for c in nfkd if c.isalnum() or c == " "]).strip()
 
 
-s = chr(47)
-q_mark = chr(63)
-eq = chr(61)
-
 def build_yt_search_url(query_text):
   q = urllib.parse.urlencode({"search_query": clean_query(query_text)})
-  return f"https://youtube.com?{q}"
+  return "https://youtube.com?" + q
 
 
 def build_google_search_url(query_text):
   q = urllib.parse.urlencode({"q": clean_query(query_text)})
-  return f"https://google.com?{q}"
-
+  return "https://google.com?" + q
 
 
 songs = load_songs()
@@ -153,16 +146,12 @@ with tab1:
         search_str = f"{song['title']} {song['artist']}"
         yt_search_url = build_yt_search_url(search_str)
         raw_yt = song.get("youtube_url", "").strip()
-        yt_url = (
-            raw_yt if ("watch?v=" in raw_yt or "youtu.be/" in raw_yt) else ""
-        )
-        
+        is_valid_video = "watch?v=" in raw_yt or "youtu.be/" in raw_yt
 
-
-        if "watch" + q_mark + "v" + eq in yt_url or "youtu.be" + s in yt_url:
-          st.video(yt_url)
+        if is_valid_video:
+          st.video(raw_yt)
           st.link_button(
-              "▶️ Megnyitás YouTube-on", yt_url, use_container_width=True
+              "▶️ Megnyitás YouTube-on", raw_yt, use_container_width=True
           )
           st.link_button(
               "🔍 További verziók a YouTube-on",
@@ -177,10 +166,9 @@ with tab1:
           )
 
         raw_sheet = song.get("sheet_music_url", "").strip()
-        sheet_url = raw_sheet if raw_sheet.startswith("http") else ""
-        if sheet_url:
+        if raw_sheet.startswith("http"):
           st.link_button(
-              "🎼 Kotta megnyitása", sheet_url, use_container_width=True
+              "🎼 Kotta megnyitása", raw_sheet, use_container_width=True
           )
         else:
           st.link_button(
@@ -235,7 +223,7 @@ with tab2:
       raw_item_yt = item.get("youtube_url", "").strip()
       yt_link = (
           raw_item_yt
-          if raw_item_yt.startswith("http")
+          if ("watch?v=" in raw_item_yt or "youtu.be/" in raw_item_yt)
           else build_yt_search_url(f"{item['title']} {item['artist']}")
       )
       export_lines.append(
@@ -334,7 +322,7 @@ with tab3:
       sep = " - " if " - " in line else (" – " if " – " in line else None)
       if sep:
         parts = line.split(sep, 1)
-        art, tit = parts[0].strip(), parts[1].strip()
+        art, tit = parts.strip(), parts.strip()
         artist_counts[art] += 1
         parsed_items.append((art, tit))
 
@@ -343,8 +331,8 @@ with tab3:
         "Szűrés zenekarra a listában:", ["Összes zenekar"] + top_artists
     )
     if sel_art != "Összes zenekar":
-      target = sel_art.rsplit(" (", 1)[0]
-      display_items = [x for x in parsed_items if x[0] == target]
+      target = sel_art.rsplit(" (", 1)
+      display_items = [x for x in parsed_items if x == target]
     else:
       display_items = parsed_items
 
