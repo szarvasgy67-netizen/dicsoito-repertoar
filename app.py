@@ -1,4 +1,5 @@
 import json
+import urllib.parse
 import streamlit as st
 
 st.set_page_config(
@@ -6,7 +7,6 @@ st.set_page_config(
 )
 
 
-# 1. Gyorsítótárazott adatbetöltés (villámgyors működés)
 @st.cache_data
 def load_songs():
   with open("data/songs.json", "r", encoding="utf-8") as f:
@@ -15,7 +15,6 @@ def load_songs():
 
 songs = load_songs()
 
-# Session state inicializálása a koncertanyaghoz (setlist)
 if "setlist" not in st.session_state:
   st.session_state.setlist = []
 
@@ -95,7 +94,7 @@ with tab1:
           f"**{song['title']}** – {song['artist']} | 🎵 {song['key']} | 🏷️"
           f" {', '.join(song['themes'])}"
       ):
-        col1, col2 = st.columns([3, 2])
+        col1, col2 = st.columns([1.2, 1])
 
         with col1:
           st.subheader("Dalszöveg")
@@ -105,16 +104,38 @@ with tab1:
           st.subheader("Média és Kotta")
           st.markdown(f"**Hangnem:** {song['key']} | **Tempó:** {song['bpm']} BPM")
 
-          if song.get("sheet_music_url"):
+          # Automatikus keresőlinkek generálása, ha nincs fix URL
+          search_term = urllib.parse.quote(f"{song['title']} {song['artist']}")
+          chord_search_term = urllib.parse.quote(
+              f"{song['title']} {song['artist']} chords lyrics"
+          )
+
+          # Kotta gomb
+          sheet_url = (
+              song.get("sheet_music_url")
+              or f"https://google.com{chord_search_term}"
+          )
+          sheet_label = (
+              "🎼 Kotta megnyitása"
+              if song.get("sheet_music_url")
+              else "🎼 Kotta / Akkord keresése"
+          )
+          st.link_button(sheet_label, sheet_url, use_container_width=True)
+
+          # YouTube lejátszó vagy közvetlen YouTube keresőgomb
+          if song.get("youtube_url"):
+            st.video(song["youtube_url"])
+          else:
+            yt_search_url = (
+                f"https://youtube.com{search_term}"
+            )
             st.link_button(
-                "🎼 Kotta megnyitása",
-                song["sheet_music_url"],
+                "▶️ Meghallgatás YouTube-on",
+                yt_search_url,
                 use_container_width=True,
             )
 
-          if song.get("youtube_url"):
-            st.video(song["youtube_url"])
-
+          # Hozzáadás a setlisthez
           is_in_setlist = any(
               s["id"] == song["id"] for s in st.session_state.setlist
           )
@@ -141,7 +162,7 @@ with tab2:
     export_lines = ["KONCERTANYAG / DICSŐÍTŐ SETLIST\n" + "=" * 35 + "\n"]
 
     for idx, item in enumerate(st.session_state.setlist):
-      c1, c2, c3, c4 = st.columns([4, 4, 1, 1])
+      c1, c2, c3, c4 = st.columns([3, 3, 1, 1])
       with c1:
         st.markdown(
             f"**{idx + 1}. {item['title']}** ({item['artist']}) –"
@@ -167,17 +188,20 @@ with tab2:
           st.rerun()
 
       note_text = f" | Megjegyzés: {note}" if note else ""
+      yt_link = (
+          item.get("youtube_url")
+          or "https://youtube.com"
+          + urllib.parse.quote(f"{item['title']} {item['artist']}")
+      )
       export_lines.append(
           f"{idx + 1}. {item['title']} - {item['artist']} [{item['key']},"
-          f" {item['bpm']} BPM]{note_text}\n   YouTube:"
-          f" {item.get('youtube_url', 'Nincs')}\n   Kotta:"
-          f" {item.get('sheet_music_url', 'Nincs')}\n"
+          f" {item['bpm']} BPM]{note_text}\n   YouTube: {yt_link}\n"
       )
 
     st.divider()
 
     final_text = "\n".join(export_lines)
-    col_exp1, col_exp2 = st.columns([2, 1])
+    col_exp1, col_exp2 = st.columns([1, 1])
     with col_exp1:
       st.download_button(
           label="📥 Koncertanyag letöltése (.txt) a zenekarnak",
