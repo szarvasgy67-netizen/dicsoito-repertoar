@@ -7,13 +7,41 @@ st.set_page_config(
     page_title="Dicsőítő Repertoár", page_icon="🎸", layout="wide"
 )
 
-# Görgetősáv kényszerítése, hogy sose tűnjön el a Streamlit keretben
+# Görgetősáv kényszerítése + natív HTML gombok stílusa (hogy sose legyen about:blank#blocked)
 st.markdown(
     """
     <style>
         html, body, [data-testid="stAppViewContainer"], .main {
             overflow-y: auto !important;
             height: auto !important;
+        }
+        .ext-btn {
+            display: block;
+            width: 100%;
+            padding: 0.55rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            text-decoration: none !important;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: opacity 0.2s;
+        }
+        .ext-btn:hover {
+            opacity: 0.85;
+        }
+        .yt-btn {
+            background-color: #FF0000;
+            color: #FFFFFF !important;
+        }
+        .sheet-btn {
+            background-color: #262730;
+            color: #FFFFFF !important;
+            border: 1px solid #4A4C5A;
+        }
+        .radio-btn {
+            background-color: #1E3A8A;
+            color: #FFFFFF !important;
         }
     </style>
     """,
@@ -54,6 +82,14 @@ def make_google_search_url(query_text):
   return f"{base}?{params}"
 
 
+def render_link_button(label, url, css_class="sheet-btn"):
+  st.markdown(
+      f'<a href="{url}" target="_blank" rel="noopener noreferrer"'
+      f' class="ext-btn {css_class}">{label}</a>',
+      unsafe_allow_html=True,
+  )
+
+
 songs = load_songs()
 
 if "setlist" not in st.session_state:
@@ -81,15 +117,11 @@ selected_key = st.sidebar.multiselect("Hangnem:", options=all_keys)
 st.sidebar.divider()
 st.sidebar.subheader("📻 Élő Dicsőítő Rádiók (USA)")
 st.sidebar.caption("Ingyenes 0-24 online stream inspirációhoz:")
-st.sidebar.link_button(
-    "🎵 Air1 Worship Now",
-    "https://" + "://air1.com",
-    use_container_width=True,
+render_link_button(
+    "🎵 Air1 Worship Now", "https://" + "://air1.com", "radio-btn"
 )
-st.sidebar.link_button(
-    "❤️ K-LOVE Radio",
-    "https://" + "://klove.com",
-    use_container_width=True,
+render_link_button(
+    "❤️ K-LOVE Radio", "https://" + "://klove.com", "radio-btn"
 )
 
 # --- SZŰRÉSI LOGIKA ---
@@ -168,7 +200,7 @@ with tab1:
 
           clean_query = build_clean_query(song["title"], song["artist"])
 
-          # Kotta gomb
+          # Natív HTML kotta gomb (sose blokkolja a böngésző)
           sheet_url = song.get("sheet_music_url") or make_google_search_url(
               f"{clean_query} chords lyrics"
           )
@@ -177,15 +209,12 @@ with tab1:
               if song.get("sheet_music_url")
               else "🎼 Kotta / Akkord keresése"
           )
-          st.link_button(sheet_label, sheet_url, use_container_width=True)
+          render_link_button(sheet_label, sheet_url, "sheet-btn")
 
-          # Golyóálló YouTube keresőgomb (minden dalnál garantáltan a találati listát nyitja)
+          # Natív HTML piros YouTube gomb (sose blokkolja a böngésző)
           yt_search_url = make_yt_search_url(clean_query)
-          st.link_button(
-              "▶️ Meghallgatás YouTube-on",
-              yt_search_url,
-              use_container_width=True,
-              type="primary",
+          render_link_button(
+              "▶️ Meghallgatás YouTube-on", yt_search_url, "yt-btn"
           )
 
           # Hozzáadás a setlisthez
