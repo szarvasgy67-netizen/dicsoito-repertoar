@@ -67,8 +67,9 @@ if "setlist" not in st.session_state:
 search_query = st.sidebar.text_input(
     "Keresés címre, előadóra vagy dalszövegre:",
     placeholder="pl. Óceánok, Hillsong, kegyelem...",
-    key="main_search_box",
+    key="kereso_mezo_egyedi",
 )
+
 
 
 all_artists = sorted(list({song.get("artist", "") for song in songs}))
