@@ -1,6 +1,8 @@
 from collections import Counter
 import json
 import unicodedata
+from bs4 import BeautifulSoup
+import requests
 import streamlit as st
 
 st.set_page_config(
@@ -111,7 +113,6 @@ for song in songs:
 # --- FŐ FELÜLET ---
 st.title("🎸 Dicsőítő Repertoár & Setlist Tervező")
 
-# Látható visszajelzés, ha a bal oldali szűrő aktív!
 if search_query or selected_themes or selected_origin or selected_key:
   st.success(
       f"🎯 **Szűrés aktív:** {len(filtered_songs)} dal felel meg a bal"
@@ -126,7 +127,7 @@ else:
 tab1, tab2, tab3 = st.tabs([
     f"📚 Dalbank ({len(filtered_songs)} találat)",
     f"📋 Koncertanyag / Setlist ({len(st.session_state.setlist)})",
-    "📊 Rádiós Trendek & Lista Elemző",
+    "📊 Amerikai Rádiós Toplisták (Air1 & K-LOVE)",
 ])
 
 # === 1. FÜL: DALBANK ===
@@ -137,10 +138,7 @@ with tab1:
         " szűrőt beállítani!"
     )
   else:
-    st.caption(
-        f"Szűrt lista: **{len(filtered_songs)} dal** (válassz az alábbi"
-        " legördülő menüből):"
-    )
+    st.caption(f"Szűrt lista: **{len(filtered_songs)} dal**")
 
     song_options = {
         f"#{song['id']} | {song['title']} – {song['artist']} ({song['key']})": (
@@ -296,133 +294,196 @@ with tab2:
       if st.button("🧹 Teljes lista törlése"):
         st.session_state.setlist = []
         st.rerun()
-# === 3. FÜL: RÁDIÓS TRENDEK & LISTA ELEMZŐ ===
+@st.cache_data(ttl=3600)
+def fetch_us_christian_radio_data():
+  """Amerikai Streamlit szerverről (USA IP) dinamikusan lekéri a friss keresztény rádiós és toplistás adatokat."""
+  headers = {
+      "User-Agent": (
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+          " (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      )
+  }
+  results = {"air1": [], "klove": [], "itunes_christian": []}
+
+  # 1. Air1 playlist lekérése USA szerverről
+  try:
+    url_air1 = (
+        "https:"
+        + s
+        + s
+        + "onlineradiobox.com"
+        + s
+        + "us"
+        + s
+        + "air1"
+        + s
+        + "playlist"
+        + s
+    )
+    r = requests.get(url_air1, headers=headers, timeout=8)
+    if r.status_code == 200:
+      soup = BeautifulSoup(r.text, "html.parser")
+      for row in soup.select("table.tablelist-schedule tr"):
+        cols = [c.get_text(" ", strip=True) for c in row.find_all("td")]
+        if len(cols) >= 2 and " - " in cols[1]:
+          results["air1"].append(cols[1])
+  except Exception:
+    pass
+
+  # 2. K-LOVE playlist lekérése USA szerverről
+  try:
+    url_klove = (
+        "https:"
+        + s
+        + s
+        + "onlineradiobox.com"
+        + s
+        + "us"
+        + s
+        + "klove"
+        + s
+        + "playlist"
+        + s
+    )
+    r = requests.get(url_klove, headers=headers, timeout=8)
+    if r.status_code == 200:
+      soup = BeautifulSoup(r.text, "html.parser")
+      for row in soup.select("table.tablelist-schedule tr"):
+        cols = [c.get_text(" ", strip=True) for c in row.find_all("td")]
+        if len(cols) >= 2 and " - " in cols[1]:
+          results["klove"].append(cols[1])
+  except Exception:
+    pass
+
+  # 3. Apple Music / iTunes USA Christian & Gospel Top 50 élő JSON feed
+  try:
+    url_itunes = (
+        "https:"
+        + s
+        + s
+        + "://apple.com"
+        + s
+        + "us"
+        + s
+        + "rss"
+        + s
+        + "topsongs"
+        + s
+        + "limit=50"
+        + s
+        + "genre=22"
+        + s
+        + "json"
+    )
+    r = requests.get(url_itunes, headers=headers, timeout=8)
+    if r.status_code == 200:
+      data = r.json()
+      entries = data.get("feed", {}).get("entry", [])
+      for entry in entries:
+        title = entry.get("im:name", {}).get("label", "")
+        artist = entry.get("im:artist", {}).get("label", "")
+        if title and artist:
+          results["itunes_christian"].append(f"{artist} - {title}")
+  except Exception:
+    pass
+
+  return results
+
+
+# === 3. FÜL: DINAMIKUS AMERIKAI RÁDIÓS TOPLISTÁK ===
 with tab3:
-  st.subheader("📻 Amerikai Keresztény Rádiók Lejátszási Listái & Trendek")
-  st.markdown(
-      "Az alábbi gombok közvetlenül az **Air1 Worship Now** és a **K-LOVE**"
-      " csatornák elmúlt napokban/hetekben játszott dalainak listáját nyitják"
-      " meg (Európából is elérhető felületen):"
-  )
-
-  # Európából is blokkolás nélkül működő közvetlen lejátszási lista linkek (chr(47) trükkel)
-  air1_pl_url = (
-      "https:"
-      + s
-      + s
-      + "onlineradiobox.com"
-      + s
-      + "us"
-      + s
-      + "air1"
-      + s
-      + "playlist"
-      + s
-  )
-  klove_pl_url = (
-      "https:"
-      + s
-      + s
-      + "onlineradiobox.com"
-      + s
-      + "us"
-      + s
-      + "klove"
-      + s
-      + "playlist"
-      + s
-  )
-  worship_charts_url = build_google_search_url(
-      "Air1 Worship Now recently played songs playlist"
-  )
-
-  r_col1, r_col2, r_col3 = st.columns(3)
-  with r_col1:
-    st.link_button(
-        "🎵 Air1 Worship – Lejátszási lista (7 nap)",
-        air1_pl_url,
-        use_container_width=True,
-        type="primary",
-    )
-  with r_col2:
-    st.link_button(
-        "❤️ K-LOVE – Lejátszási lista (7 nap)",
-        klove_pl_url,
-        use_container_width=True,
-        type="primary",
-    )
-  with r_col3:
-    st.link_button(
-        "🔍 Air1 / K-LOVE Top Listák keresése",
-        worship_charts_url,
-        use_container_width=True,
-    )
-
-  st.divider()
-
-  # 2. Copy-Paste Lejátszási Lista Elemző
-  st.markdown("### 📋 Rádiós Lejátszási Lista Gyors-Elemző")
+  st.subheader("📻 Élő Amerikai Keresztény Rádiós & Toplista Adatok")
   st.caption(
-      "Nyisd meg a fenti Air1 vagy K-LOVE lejátszási listát, jelöld ki a"
-      " dalokat (Ctrl+C), másold ide (Ctrl+V), és a program kigyűjti a"
-      " zenekarokat, a gyakoriságot és összeveti a saját dalbankoddal!"
+      "Mivel az alkalmazás amerikai szerveren fut, közvetlenül lekéri a friss"
+      " USA keresztény rádiós (Air1, K-LOVE) és slágerlistás adatokat –"
+      " európai tiltás nélkül!"
   )
 
-  pasted_playlist = st.text_area(
-      "Másold ide a rádiós lejátszási listát (soronként pl. 'Előadó - Dal címe'"
-      " vagy '14:20 Előadó - Dal címe'):",
-      height=180,
-      placeholder=(
-          "Példa:\n18:15 Elevation Worship - Praise\n18:10 Brandon Lake -"
-          " Gratitude\n18:05 Phil Wickham - Living Hope\n17:58 Elevation"
-          " Worship - Praise\n17:52 Hillsong Worship - What A Beautiful Name"
-      ),
-  )
+  col_btn1, col_btn2 = st.columns([1, 3])
+  with col_btn1:
+    if st.button("🔄 Adatok frissítése most", use_container_width=True):
+      st.cache_data.clear()
+      st.rerun()
 
-  if pasted_playlist.strip():
-    raw_lines = [
-        line.strip() for line in pasted_playlist.splitlines() if line.strip()
-    ]
-    song_entries = []
-    artists_counter = Counter()
+  with st.spinner("Amerikai keresztény rádiós listák lekérése..."):
+    radio_data = fetch_us_christian_radio_data()
 
-    for line in raw_lines:
-      sep = " - " if " - " in line else (" – " if " – " in line else None)
-      if sep:
-        parts = line.split(sep, 1)
-        part_a, part_b = parts[0].strip(), parts[1].strip()
-        if len(part_a) > 6 and part_a[:2].isdigit() and ":" in part_a[:6]:
-          part_a = part_a.split(" ", 1)[-1].strip()
-        artists_counter[part_a] += 1
-        song_entries.append(f"{part_a} – {part_b}")
-      elif len(line) > 3 and not line.isdigit():
-        song_entries.append(line)
+  source_options = {}
+  if radio_data["air1"]:
+    source_options[
+        f"🎵 Air1 Worship Now – Friss adáslista ({len(radio_data['air1'])} dal)"
+    ] = radio_data["air1"]
+  if radio_data["klove"]:
+    source_options[
+        f"❤️ K-LOVE Radio – Friss adáslista ({len(radio_data['klove'])} dal)"
+    ] = radio_data["klove"]
+  if radio_data["itunes_christian"]:
+    source_options[
+        "🏆 USA Christian & Gospel Top 50"
+        f" ({len(radio_data['itunes_christian'])} dal)"
+    ] = radio_data["itunes_christian"]
 
-    song_counts = Counter(song_entries)
+  if not source_options:
+    st.warning(
+        "A külső rádiós szerverek most lassabban válaszolnak. Nyomj a"
+        " 'Frissítés' gombra, vagy használd a lenti saját statisztikát!"
+    )
+  else:
+    selected_source = st.selectbox(
+        "Válassz élő adatforrást:", list(source_options.keys())
+    )
+    active_list = source_options[selected_source]
 
-    st.success(
-        f"Feldolgozva: **{len(song_entries)} lejátszás**, **{len(song_counts)}"
-        " különböző dal**!"
+    parsed_items = []
+    artist_counts = Counter()
+
+    for row in active_list:
+      if " - " in row:
+        art, tit = row.split(" - ", 1)
+        art, tit = art.strip(), tit.strip()
+        artist_counts[art] += 1
+        parsed_items.append((art, tit, row))
+
+    top_artists = [f"{a} ({c} dal)" for a, c in artist_counts.most_common()]
+    selected_radio_artist = st.selectbox(
+        "Szűrés zenekarra az élő listában:",
+        ["Összes zenekar"] + top_artists,
     )
 
-    an_col1, an_col2 = st.columns([1.4, 1])
+    if selected_radio_artist != "Összes zenekar":
+      target_artist = selected_radio_artist.rsplit(" (", 1)[0]
+      display_items = [
+          item for item in parsed_items if item[0] == target_artist
+      ]
+    else:
+      display_items = parsed_items
 
-    with an_col1:
-      st.markdown("#### 🏆 Legtöbbet játszott dalok & Dalbank egyezés")
-      for entry, count in song_counts.most_common(30):
-        norm_entry = normalize_match(entry)
+    st.divider()
+    d_col1, d_col2 = st.columns([1.5, 1])
+
+    with d_col1:
+      st.markdown(f"#### 🎶 Dalok a listában ({len(display_items)} találat)")
+      seen_songs = Counter((art, tit) for art, tit, _ in display_items)
+
+      for (art, tit), play_count in seen_songs.most_common(40):
+        full_label = f"{art} – {tit}"
+        norm_title = normalize_match(tit)
+
         matched_song = None
         for db_song in songs:
           db_title = normalize_match(db_song["title"])
-          title_words = [w for w in db_title.split() if len(w) > 3]
-          if title_words and all(w in norm_entry for w in title_words[:3]):
+          title_words = [w for w in norm_title.split() if len(w) > 3]
+          if title_words and all(w in db_title for w in title_words[:3]):
             matched_song = db_song
             break
 
         with st.container(border=True):
           m1, m2 = st.columns([3, 1.2])
           with m1:
-            st.markdown(f"**{entry}** *(lejátszva: {count}x)*")
+            count_badge = (
+                f" *(lejátszva: {play_count}x)*" if play_count > 1 else ""
+            )
+            st.markdown(f"**{full_label}**{count_badge}")
             if matched_song:
               st.caption(
                   f"✅ **Megvan a dalbankban (#{matched_song['id']})** | 🎵"
@@ -434,24 +495,18 @@ with tab3:
           with m2:
             st.link_button(
                 "▶️ YouTube",
-                build_yt_search_url(entry),
+                build_yt_search_url(f"{art} {tit}"),
                 use_container_width=True,
             )
 
-    with an_col2:
-      st.markdown("#### 🎸 Zenekarok megoszlása a listában")
-      if artists_counter:
-        for artist_name, a_count in artists_counter.most_common(20):
-          st.markdown(f"- **{artist_name}**: {a_count} lejátszás")
-      else:
-        st.info(
-            "Ha 'Előadó - Dal címe' formátumban másolod be a listát, itt"
-            " zenekaronként is összesíti!"
-        )
+    with d_col2:
+      st.markdown("#### 🎸 Zenekarok rangsora ebben a listában")
+      for art_name, cnt in artist_counts.most_common(20):
+        st.markdown(f"- **{art_name}**: {cnt} lejátszás / dal")
 
   st.divider()
 
-  # 3. Saját Repertoár Statisztika (Zenekaronként és Tematikánként)
+  # Saját Repertoár Statisztika
   st.markdown(
       f"### 📈 Saját Repertoár Statisztika ({len(songs)} dal bontása)"
   )
