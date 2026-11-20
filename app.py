@@ -153,7 +153,10 @@ with tab1:
       with st.container(border=True):
         search_str = f"{song['title']} {song['artist']}"
         yt_search_url = build_yt_search_url(search_str)
-        yt_url = song.get("youtube_url", "").strip()
+        sheet_url = song.get("sheet_music_url", "").strip()
+        if not sheet_url.startswith("http"):
+          sheet_url = ""
+
 
         if "watch" + q_mark + "v" + eq in yt_url or "youtu.be" + s in yt_url:
           st.video(yt_url)
@@ -173,6 +176,10 @@ with tab1:
           )
 
         sheet_url = song.get("sheet_music_url", "").strip()
+        if not sheet_url.startswith("http"):  # <--- EZT SZÚRD BE IDE
+          sheet_url = ""  # <--- ÉS EZT
+        if sheet_url:
+
         if sheet_url:
           st.link_button(
               "🎼 Kotta megnyitása", sheet_url, use_container_width=True
