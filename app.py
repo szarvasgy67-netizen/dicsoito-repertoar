@@ -153,10 +153,9 @@ with tab1:
       with st.container(border=True):
         search_str = f"{song['title']} {song['artist']}"
         yt_search_url = build_yt_search_url(search_str)
-        sheet_url = song.get("sheet_music_url", "").strip()
-        if not sheet_url.startswith("http"):
-          sheet_url = ""
-
+        yt_url = song.get("youtube_url", "").strip()
+        if not yt_url.startswith("http"):
+          yt_url = ""
 
         if "watch" + q_mark + "v" + eq in yt_url or "youtu.be" + s in yt_url:
           st.video(yt_url)
@@ -172,6 +171,20 @@ with tab1:
           st.link_button(
               f"🔍 {song['title']} a YouTube-on",
               yt_search_url,
+              use_container_width=True,
+          )
+
+        sheet_url = song.get("sheet_music_url", "").strip()
+        if not sheet_url.startswith("http"):
+          sheet_url = ""
+        if sheet_url:
+          st.link_button(
+              "🎼 Kotta megnyitása", sheet_url, use_container_width=True
+          )
+        else:
+          st.link_button(
+              "🎼 Kotta / Akkord keresése",
+              build_google_search_url(f"{search_str} chords lyrics"),
               use_container_width=True,
           )
 
