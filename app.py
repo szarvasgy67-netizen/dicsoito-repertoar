@@ -110,10 +110,18 @@ for song in songs:
 
 # --- FŐ FELÜLET ---
 st.title("🎸 Dicsőítő Repertoár & Setlist Tervező")
-st.markdown(
-    f"Jelenleg **{len(songs)} keresztény dicséret** érhető el a dalbankban –"
-    " tematika, előadó és hangnem szerint szűrhetően."
-)
+
+# Látható visszajelzés, ha a bal oldali szűrő aktív!
+if search_query or selected_themes or selected_origin or selected_key:
+  st.success(
+      f"🎯 **Szűrés aktív:** {len(filtered_songs)} dal felel meg a bal"
+      " oldalon megadott feltételeknek (nézd a **📚 Dalbank** fület)!"
+  )
+else:
+  st.markdown(
+      f"Jelenleg **{len(songs)} keresztény dicséret** érhető el a dalbankban"
+      " – a bal oldali szűrőkkel tudsz válogatni."
+  )
 
 tab1, tab2, tab3 = st.tabs([
     f"📚 Dalbank ({len(filtered_songs)} találat)",
@@ -129,7 +137,10 @@ with tab1:
         " szűrőt beállítani!"
     )
   else:
-    st.caption(f"Találatok száma: **{len(filtered_songs)} dal**")
+    st.caption(
+        f"Szűrt lista: **{len(filtered_songs)} dal** (válassz az alábbi"
+        " legördülő menüből):"
+    )
 
     song_options = {
         f"#{song['id']} | {song['title']} – {song['artist']} ({song['key']})": (
@@ -138,7 +149,7 @@ with tab1:
         for song in filtered_songs
     }
     selected_label = st.selectbox(
-        "Válassz egy dalt a listából:", list(song_options.keys())
+        "Válassz egy dalt a szűrt listából:", list(song_options.keys())
     )
     song = song_options[selected_label]
 
@@ -289,39 +300,61 @@ with tab2:
 with tab3:
   st.subheader("📻 Amerikai Keresztény Rádiók Lejátszási Listái & Trendek")
   st.markdown(
-      "Nézd meg, miket játszottak az elmúlt időszakban az **Air1 Worship Now** és"
-      " a **K-LOVE** csatornákon, vagy másold be a lejátszási listájukat"
-      " elemzésre!"
+      "Az alábbi gombok közvetlenül az **Air1 Worship Now** és a **K-LOVE**"
+      " csatornák elmúlt napokban/hetekben játszott dalainak listáját nyitják"
+      " meg (Európából is elérhető felületen):"
   )
 
-  # 1. Gyorslinkek a hivatalos lejátszási listákhoz
+  # Európából is blokkolás nélkül működő közvetlen lejátszási lista linkek (chr(47) trükkel)
+  air1_pl_url = (
+      "https:"
+      + s
+      + s
+      + "onlineradiobox.com"
+      + s
+      + "us"
+      + s
+      + "air1"
+      + s
+      + "playlist"
+      + s
+  )
+  klove_pl_url = (
+      "https:"
+      + s
+      + s
+      + "onlineradiobox.com"
+      + s
+      + "us"
+      + s
+      + "klove"
+      + s
+      + "playlist"
+      + s
+  )
+  worship_charts_url = build_google_search_url(
+      "Air1 Worship Now recently played songs playlist"
+  )
+
   r_col1, r_col2, r_col3 = st.columns(3)
   with r_col1:
     st.link_button(
-        "🎵 Air1 – Nemrég játszott dalok",
-        "https:" + s + s + "://air1.com" + s + "music" + s + "songs",
+        "🎵 Air1 Worship – Lejátszási lista (7 nap)",
+        air1_pl_url,
         use_container_width=True,
+        type="primary",
     )
   with r_col2:
     st.link_button(
-        "❤️ K-LOVE – Nemrég játszott dalok",
-        "https:" + s + s + "://klove.com" + s + "music" + s + "songs",
+        "❤️ K-LOVE – Lejátszási lista (7 nap)",
+        klove_pl_url,
         use_container_width=True,
+        type="primary",
     )
   with r_col3:
     st.link_button(
-        "📊 OnlineRadioBox – Air1 Havi/Heti Playlist",
-        "https:"
-        + s
-        + s
-        + "onlineradiobox.com"
-        + s
-        + "us"
-        + s
-        + "air1"
-        + s
-        + "playlist"
-        + s,
+        "🔍 Air1 / K-LOVE Top Listák keresése",
+        worship_charts_url,
         use_container_width=True,
     )
 
@@ -330,19 +363,19 @@ with tab3:
   # 2. Copy-Paste Lejátszási Lista Elemző
   st.markdown("### 📋 Rádiós Lejátszási Lista Gyors-Elemző")
   st.caption(
-      "Nyisd meg a fenti listák egyikét, jelöld ki a dalokat (Ctrl+C), másold"
-      " ide (Ctrl+V), és a program kigyűjti a zenekarokat, a gyakoriságot és"
-      " összeveti a saját dalbankoddal!"
+      "Nyisd meg a fenti Air1 vagy K-LOVE lejátszási listát, jelöld ki a"
+      " dalokat (Ctrl+C), másold ide (Ctrl+V), és a program kigyűjti a"
+      " zenekarokat, a gyakoriságot és összeveti a saját dalbankoddal!"
   )
 
   pasted_playlist = st.text_area(
       "Másold ide a rádiós lejátszási listát (soronként pl. 'Előadó - Dal címe'"
-      " vagy 'Dal címe – Előadó'):",
+      " vagy '14:20 Előadó - Dal címe'):",
       height=180,
       placeholder=(
-          "Példa:\nElevation Worship - Praise\nBrandon Lake - Gratitude\nPhil"
-          " Wickham - Living Hope\nElevation Worship - Praise\nHillsong"
-          " Worship - What A Beautiful Name"
+          "Példa:\n18:15 Elevation Worship - Praise\n18:10 Brandon Lake -"
+          " Gratitude\n18:05 Phil Wickham - Living Hope\n17:58 Elevation"
+          " Worship - Praise\n17:52 Hillsong Worship - What A Beautiful Name"
       ),
   )
 
@@ -419,7 +452,9 @@ with tab3:
   st.divider()
 
   # 3. Saját Repertoár Statisztika (Zenekaronként és Tematikánként)
-  st.markdown("### 📈 Saját Repertoár Statisztika (215 dal bontása)")
+  st.markdown(
+      f"### 📈 Saját Repertoár Statisztika ({len(songs)} dal bontása)"
+  )
   stat_col1, stat_col2 = st.columns(2)
 
   with stat_col1:
